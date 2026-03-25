@@ -1,0 +1,1290 @@
+import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
+import PageMeta from "@/components/PageMeta";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Loader2, LogOut, ArrowLeft, Users, FileSearch,
+  CheckCircle2, Clock, AlertCircle, Send, Activity,
+  Briefcase, Building2, GraduationCap, MessageSquare,
+  TrendingUp, CalendarCheck, DollarSign, Wallet, UserPlus,
+  Zap, ExternalLink, FileText, FolderOpen, Link2, Plus,
+  Bell, CalendarDays, ChevronRight, LayoutDashboard,
+} from "lucide-react";
+import { useState } from "react";
+import { Link } from "wouter";
+import { toast } from "sonner";
+import { BRAND } from "@/lib/brand";
+
+// ─── Palette ──────────────────────────────────────────────────────────────────
+const TEAL  = "#0A1F1C";
+const GOLD  = "#C9A97E";
+const MILK  = "#FBF8EE";
+const WHITE = "#FFFFFF";
+const DARK  = "#1A1A1A";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+type Section =
+  | "overview"
+  | "assign"
+  | "pipeline"
+  | "tasks"
+  | "activity"
+  | "attendance"
+  | "commissions"
+  | "helpers"
+  | "quickaccess"
+  | "updates"
+  | "calendar";
+
+const SECTIONS: { id: Section; label: string; icon: React.ReactNode }[] = [
+  { id: "overview",    label: "Overview",       icon: <LayoutDashboard size={16} /> },
+  { id: "assign",      label: "Assign Leads",   icon: <Send size={16} /> },
+  { id: "pipeline",    label: "Lead Pipeline",  icon: <FileSearch size={16} /> },
+  { id: "tasks",       label: "All Tasks",      icon: <Briefcase size={16} /> },
+  { id: "activity",    label: "Activity",       icon: <Activity size={16} /> },
+  { id: "attendance",  label: "Attendance",     icon: <CalendarCheck size={16} /> },
+  { id: "commissions", label: "Commissions",    icon: <Wallet size={16} /> },
+  { id: "helpers",     label: "Helpers",        icon: <UserPlus size={16} /> },
+  { id: "quickaccess", label: "Quick Access",   icon: <Zap size={16} /> },
+  { id: "updates",     label: "Dept Updates",   icon: <Bell size={16} /> },
+  { id: "calendar",    label: "Calendar",       icon: <CalendarDays size={16} /> },
+];
+
+const DEPARTMENTS = [
+  { value: "bizdoc",    label: "BizDoc — Compliance",   color: BRAND.bizdoc },
+  { value: "systemise", label: "Systemise — Operations", color: BRAND.systemise },
+  { value: "skills",    label: "Skills — Talent",        color: BRAND.skills },
+];
+
+const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  "Not Started":      { bg: "rgba(107,114,128,0.08)", text: "#6B7280" },
+  "In Progress":      { bg: "rgba(59,130,246,0.10)",  text: "#3B82F6" },
+  "Waiting on Client":{ bg: "rgba(234,179,8,0.12)",   text: "#B45309" },
+  "Submitted":        { bg: "rgba(139,92,246,0.10)",  text: "#7C3AED" },
+  "Completed":        { bg: "rgba(34,197,94,0.10)",   text: "#16A34A" },
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+export default function CSODashboard() {
+  const { user, loading, logout } = useAuth({ redirectOnUnauthenticated: true });
+  const [activeSection, setActiveSection] = useState<Section>("overview");
+  const [selectedDept, setSelectedDept]   = useState<Record<number, string>>({});
+  const [taskDeptFilter, setTaskDeptFilter] = useState<string>("all");
+
+  const leadsQuery      = trpc.leads.list.useQuery(undefined,  { refetchInterval: 20000 });
+  const unassignedQuery = trpc.leads.unassigned.useQuery(undefined, { refetchInterval: 10000 });
+  const statsQuery      = trpc.tasks.stats.useQuery({ refetchInterval: 30000 } as any);
+  const activityQuery   = trpc.activity.recent.useQuery({ limit: 40 });
+  const tasksQuery      = trpc.tasks.list.useQuery(undefined,  { refetchInterval: 20000 });
+  const attendanceQuery = trpc.attendance.byDate.useQuery(
+    { date: new Date().toISOString().split("T")[0] },
+    { refetchInterval: 30000 },
+  );
+
+  const assignMutation = trpc.leads.assign.useMutation({
+    onSuccess: () => {
+      toast.success("Lead assigned successfully");
+      unassignedQuery.refetch();
+      leadsQuery.refetch();
+    },
+    onError: () => toast.error("Failed to assign lead"),
+  });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: MILK }}>
+        <Loader2 className="animate-spin" size={32} style={{ color: GOLD }} />
+      </div>
+    );
+  }
+  if (!user) return null;
+
+  const stats         = statsQuery.data;
+  const unassigned    = unassignedQuery.data || [];
+  const allLeads      = leadsQuery.data || [];
+  const recentActivity = activityQuery.data || [];
+  const allTasks      = tasksQuery.data || [];
+  const attendance    = attendanceQuery.data || [];
+
+  const filteredTasks = taskDeptFilter === "all"
+    ? allTasks
+    : allTasks.filter((t: any) => t.department === taskDeptFilter);
+
+  const handleAssign = (leadId: number) => {
+    const dept = selectedDept[leadId];
+    if (!dept) { toast.error("Please select a department"); return; }
+    assignMutation.mutate({ leadId, department: dept });
+  };
+
+  const currentSection = SECTIONS.find(s => s.id === activeSection);
+  const unreadUpdates = MOCK_UPDATES.filter(u => !u.acknowledged).length;
+
+  return (
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: MILK }}>
+      <PageMeta title="CSO Dashboard — HAMZURY" description="Client success operations dashboard for HAMZURY." />
+
+      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
+      <div
+        className="w-16 md:w-60 flex flex-col h-full shrink-0 transition-all duration-200"
+        style={{ backgroundColor: TEAL }}
+      >
+        {/* Logo */}
+        <div className="flex items-center gap-3 px-4 py-5 border-b shrink-0" style={{ borderColor: `${GOLD}15` }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: GOLD }}>
+            <FileSearch size={16} style={{ color: TEAL }} />
+          </div>
+          <div className="hidden md:block overflow-hidden">
+            <p className="text-[10px] font-bold tracking-[0.25em] uppercase leading-none" style={{ color: `${GOLD}80` }}>
+              CSO Hub
+            </p>
+            <p className="text-[13px] font-semibold leading-tight mt-0.5 truncate" style={{ color: MILK }}>
+              Strategy Office
+            </p>
+          </div>
+        </div>
+
+        {/* Nav */}
+        <ScrollArea className="flex-1 py-3">
+          <div className="flex flex-col gap-0.5 px-2">
+            {SECTIONS.map(s => {
+              const isActive = activeSection === s.id;
+              const hasBadge = s.id === "assign" && unassigned.length > 0;
+              const hasUpdBadge = s.id === "updates" && unreadUpdates > 0;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setActiveSection(s.id)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left w-full transition-all"
+                  style={{
+                    backgroundColor: isActive ? `${GOLD}18` : "transparent",
+                    color: isActive ? GOLD : `${MILK}70`,
+                  }}
+                >
+                  <span className="shrink-0">{s.icon}</span>
+                  <span className="hidden md:block text-[13px] font-medium truncate flex-1">{s.label}</span>
+                  {(hasBadge || hasUpdBadge) && (
+                    <span
+                      className="hidden md:flex w-5 h-5 rounded-full items-center justify-center text-[10px] font-bold shrink-0"
+                      style={{ backgroundColor: "#EF4444", color: WHITE }}
+                    >
+                      {hasBadge ? unassigned.length : unreadUpdates}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </ScrollArea>
+
+        {/* Footer */}
+        <div className="px-2 pb-4 pt-2 border-t shrink-0 space-y-1" style={{ borderColor: `${GOLD}12` }}>
+          <Link href="/">
+            <button
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full transition-all"
+              style={{ color: `${MILK}50` }}
+            >
+              <ArrowLeft size={16} className="shrink-0" />
+              <span className="hidden md:block text-[12px]">Back to HAMZURY</span>
+            </button>
+          </Link>
+          <button
+            onClick={logout}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full transition-all hover:opacity-80"
+            style={{ color: `${MILK}50` }}
+          >
+            <LogOut size={16} className="shrink-0" />
+            <span className="hidden md:block text-[12px]">Sign Out</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Main Area ────────────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+
+        {/* Top bar */}
+        <div
+          className="flex items-center justify-between px-6 py-3.5 border-b shrink-0"
+          style={{ backgroundColor: WHITE, borderColor: `${TEAL}10` }}
+        >
+          <div>
+            <h1 className="text-[15px] font-semibold" style={{ color: TEAL }}>
+              {currentSection?.label}
+            </h1>
+            <p className="text-[11px] opacity-40" style={{ color: DARK }}>
+              CSO Hub · Strategy & Operations
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Cross-nav links */}
+            <div className="hidden md:flex items-center gap-2">
+              {[
+                { href: "/hub/ceo",     label: "CEO" },
+                { href: "/hub/finance", label: "Finance" },
+                { href: "/hub/hr",      label: "HR" },
+              ].map(l => (
+                <Link key={l.href} href={l.href}>
+                  <span
+                    className="text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg border transition-all hover:opacity-80 cursor-pointer"
+                    style={{ borderColor: `${TEAL}15`, color: TEAL }}
+                  >
+                    {l.label}
+                  </span>
+                </Link>
+              ))}
+            </div>
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[13px]"
+              style={{ backgroundColor: `${TEAL}10`, color: TEAL }}
+            >
+              {(user.name || "C").charAt(0).toUpperCase()}
+            </div>
+            <div className="hidden md:block">
+              <p className="text-[12px] font-semibold leading-none" style={{ color: TEAL }}>
+                {user.name || "CSO"}
+              </p>
+              <p className="text-[10px] opacity-40 mt-0.5" style={{ color: DARK }}>
+                Chief Strategy Officer
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <ScrollArea className="flex-1">
+          <div className="p-6 max-w-7xl mx-auto">
+
+            {/* ── Overview ── */}
+            {activeSection === "overview" && (
+              <div className="space-y-6">
+                {/* Stats row */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  <StatCard label="Total Leads"  value={allLeads.length}                                color={GOLD}     icon={<Users size={16} />} />
+                  <StatCard label="Unassigned"   value={unassigned.length}                             color="#EF4444"  icon={<AlertCircle size={16} />} urgent={unassigned.length > 0} />
+                  <StatCard label="Active Tasks" value={(stats?.totalTasks ?? 0) - (stats?.completed ?? 0)} color="#3B82F6" icon={<TrendingUp size={16} />} />
+                  <StatCard label="In Progress"  value={stats?.inProgress ?? 0}                        color="#8B5CF6"  icon={<Clock size={16} />} />
+                  <StatCard label="Waiting"      value={stats?.waitingOnClient ?? 0}                   color="#EAB308"  icon={<AlertCircle size={16} />} />
+                  <StatCard label="Completed"    value={stats?.completed ?? 0}                         color="#22C55E"  icon={<CheckCircle2 size={16} />} />
+                </div>
+
+                {/* Quick actions */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: "Assign New Lead",   section: "assign" as Section,      icon: <Send size={18} />,        badge: unassigned.length > 0 ? unassigned.length : null },
+                    { label: "Lead Pipeline",     section: "pipeline" as Section,    icon: <FileSearch size={18} />,  badge: null },
+                    { label: "Dept Updates",      section: "updates" as Section,     icon: <Bell size={18} />,        badge: unreadUpdates > 0 ? unreadUpdates : null },
+                    { label: "Calendar",          section: "calendar" as Section,    icon: <CalendarDays size={18} />, badge: null },
+                  ].map(item => (
+                    <button
+                      key={item.section}
+                      onClick={() => setActiveSection(item.section)}
+                      className="relative p-5 rounded-2xl border text-left transition-all hover:scale-[1.02] hover:shadow-sm"
+                      style={{ backgroundColor: WHITE, borderColor: `${TEAL}10` }}
+                    >
+                      {item.badge !== null && (
+                        <span
+                          className="absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                          style={{ backgroundColor: "#EF4444", color: WHITE }}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: `${TEAL}08` }}>
+                        <span style={{ color: TEAL }}>{item.icon}</span>
+                      </div>
+                      <p className="text-[13px] font-semibold" style={{ color: TEAL }}>{item.label}</p>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Recent activity preview */}
+                <div className="bg-white rounded-2xl border p-5" style={{ borderColor: `${TEAL}10` }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-[13px] font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: TEAL }}>
+                      <Activity size={14} style={{ color: GOLD }} /> Recent Activity
+                    </h3>
+                    <button
+                      onClick={() => setActiveSection("activity")}
+                      className="text-[11px] font-bold uppercase tracking-wider opacity-40 hover:opacity-100"
+                      style={{ color: TEAL }}
+                    >
+                      View All
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {recentActivity.slice(0, 5).length === 0 ? (
+                      <p className="text-[13px] opacity-30 text-center py-4" style={{ color: TEAL }}>No recent activity</p>
+                    ) : recentActivity.slice(0, 5).map((a: any) => (
+                      <div key={a.id} className="flex items-start gap-3">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: `${TEAL}08` }}>
+                          <Activity size={12} style={{ color: GOLD }} />
+                        </div>
+                        <div>
+                          <p className="text-[13px] font-medium" style={{ color: TEAL }}>{a.action.replace(/_/g, " ")}</p>
+                          <p className="text-[11px] opacity-30 mt-0.5">{new Date(a.createdAt).toLocaleString("en-NG", { dateStyle: "short", timeStyle: "short" })}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Assign Leads ── */}
+            {activeSection === "assign" && (
+              <AssignmentPanel
+                leads={unassigned}
+                totalLeads={allLeads.length}
+                selectedDept={selectedDept}
+                setSelectedDept={setSelectedDept}
+                handleAssign={handleAssign}
+                isPending={assignMutation.isPending}
+              />
+            )}
+
+            {/* ── Lead Pipeline ── */}
+            {activeSection === "pipeline" && (
+              <LeadPipeline leads={allLeads} />
+            )}
+
+            {/* ── All Tasks ── */}
+            {activeSection === "tasks" && (
+              <div className="bg-white rounded-2xl border" style={{ borderColor: `${TEAL}10` }}>
+                <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: `${TEAL}08` }}>
+                  <h3 className="text-[13px] font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: TEAL }}>
+                    <Briefcase size={15} style={{ color: GOLD }} /> Task Queue — All Departments
+                  </h3>
+                  <div className="flex gap-2 flex-wrap">
+                    {["all", "bizdoc", "systemise", "skills"].map(d => (
+                      <button
+                        key={d}
+                        onClick={() => setTaskDeptFilter(d)}
+                        className="text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full transition-all"
+                        style={{
+                          backgroundColor: taskDeptFilter === d ? TEAL : "transparent",
+                          color: taskDeptFilter === d ? GOLD : TEAL,
+                          border: `1px solid ${TEAL}20`,
+                        }}
+                      >
+                        {d === "all" ? "All" : d}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="divide-y" style={{ borderColor: `${TEAL}06` }}>
+                  {filteredTasks.length === 0 ? (
+                    <p className="text-center text-[13px] opacity-40 p-10" style={{ color: TEAL }}>No tasks found</p>
+                  ) : filteredTasks.map((task: any) => (
+                    <TaskRow key={task.id} task={task} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── Activity ── */}
+            {activeSection === "activity" && (
+              <div className="bg-white rounded-2xl border" style={{ borderColor: `${TEAL}10` }}>
+                <div className="p-4 border-b" style={{ borderColor: `${TEAL}08` }}>
+                  <h3 className="text-[13px] font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: TEAL }}>
+                    <Activity size={15} style={{ color: GOLD }} /> Recent Activity
+                  </h3>
+                </div>
+                <div className="divide-y" style={{ borderColor: `${TEAL}06` }}>
+                  {recentActivity.length === 0 ? (
+                    <p className="text-center text-[13px] opacity-40 p-10" style={{ color: TEAL }}>No recent activity</p>
+                  ) : recentActivity.map((a: any) => (
+                    <div key={a.id} className="p-4 flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: `${TEAL}08` }}>
+                        <Activity size={13} style={{ color: GOLD }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium" style={{ color: TEAL }}>{a.action.replace(/_/g, " ")}</p>
+                        {a.details && <p className="text-[12px] opacity-50 mt-0.5 truncate">{a.details}</p>}
+                        <p className="text-[11px] opacity-30 mt-1">{new Date(a.createdAt).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" })}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── Attendance ── */}
+            {activeSection === "attendance" && (
+              <AttendanceView attendance={attendance} isLoading={attendanceQuery.isLoading} />
+            )}
+
+            {/* ── Commissions ── */}
+            {activeSection === "commissions" && <CommissionsView />}
+
+            {/* ── Helpers ── */}
+            {activeSection === "helpers" && <HelpersView />}
+
+            {/* ── Quick Access ── */}
+            {activeSection === "quickaccess" && <QuickAccessView />}
+
+            {/* ── Dept Updates ── */}
+            {activeSection === "updates" && <DeptUpdatesView />}
+
+            {/* ── Calendar ── */}
+            {activeSection === "calendar" && <CalendarView />}
+
+          </div>
+        </ScrollArea>
+      </div>
+    </div>
+  );
+}
+
+// ─── STAT CARD ────────────────────────────────────────────────────────────────
+function StatCard({ label, value, color, icon, urgent }: {
+  label: string; value: number; color: string; icon: React.ReactNode; urgent?: boolean;
+}) {
+  return (
+    <div
+      className="rounded-2xl border p-4 text-center transition-transform hover:-translate-y-0.5"
+      style={{
+        backgroundColor: WHITE,
+        borderColor: urgent ? `${color}40` : `${TEAL}08`,
+        boxShadow: urgent ? `0 0 0 1px ${color}20` : undefined,
+      }}
+    >
+      <div className="flex justify-center mb-1.5" style={{ color }}>{icon}</div>
+      <p className="text-[22px] font-bold leading-none" style={{ color }}>{value}</p>
+      <p className="text-[10px] uppercase tracking-wider font-semibold opacity-40 mt-1" style={{ color: TEAL }}>{label}</p>
+    </div>
+  );
+}
+
+// ─── TASK ROW ─────────────────────────────────────────────────────────────────
+function TaskRow({ task }: { task: any }) {
+  const sc = STATUS_COLORS[task.status] || { bg: "#f3f4f6", text: "#6b7280" };
+  const dept = DEPARTMENTS.find(d => d.value === task.department);
+  return (
+    <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 hover:bg-gray-50/50 transition-colors">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className="text-[11px] font-bold tracking-wider font-mono opacity-40" style={{ color: TEAL }}>{task.ref}</span>
+          {dept && (
+            <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ backgroundColor: `${dept.color}12`, color: dept.color }}>
+              {dept.value}
+            </span>
+          )}
+        </div>
+        <p className="text-[14px] font-semibold truncate" style={{ color: TEAL }}>{task.clientName}</p>
+        <p className="text-[12px] opacity-50 truncate">{task.service}</p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        {task.deadline && (
+          <span className="text-[11px] opacity-40 hidden sm:block">{task.deadline}</span>
+        )}
+        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: sc.bg, color: sc.text }}>
+          {task.status}
+        </span>
+        <a
+          href={task.phone ? `https://wa.me/${task.phone.replace(/\D/g, "")}` : "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-7 h-7 rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
+          style={{ backgroundColor: "#25D36615", color: "#25D366" }}
+          title="Contact on WhatsApp"
+        >
+          <MessageSquare size={12} />
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// ─── LEAD PIPELINE ────────────────────────────────────────────────────────────
+function LeadPipeline({ leads }: { leads: any[] }) {
+  const groups = {
+    new:       leads.filter(l => l.status === "new"),
+    contacted: leads.filter(l => l.status === "contacted"),
+    converted: leads.filter(l => l.status === "converted"),
+    archived:  leads.filter(l => l.status === "archived"),
+  };
+  const dotColors: Record<string, string> = { new: "#3B82F6", contacted: "#EAB308", converted: "#22C55E", archived: "#9CA3AF" };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {Object.entries(groups).map(([status, items]) => (
+        <div key={status} className="bg-white rounded-2xl border" style={{ borderColor: `${TEAL}10` }}>
+          <div className="p-4 border-b flex justify-between items-center" style={{ borderColor: `${TEAL}06` }}>
+            <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: TEAL }}>
+              {status} <span className="opacity-40">({items.length})</span>
+            </h3>
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: dotColors[status] }} />
+          </div>
+          <ScrollArea className="max-h-[480px]">
+            <div className="p-3 flex flex-col gap-2">
+              {items.length === 0 ? (
+                <p className="text-center text-[12px] opacity-30 p-4" style={{ color: TEAL }}>Empty</p>
+              ) : items.map((lead: any) => (
+                <div key={lead.id} className="p-3 rounded-xl border hover:opacity-80 transition-opacity" style={{ borderColor: `${TEAL}08`, backgroundColor: `${TEAL}04` }}>
+                  <div className="flex justify-between items-start mb-1.5">
+                    <span className="text-[10px] font-bold tracking-wider font-mono px-2 py-0.5 rounded" style={{ backgroundColor: `${TEAL}08`, color: TEAL }}>{lead.ref}</span>
+                    {lead.assignedDepartment && (
+                      <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full" style={{ backgroundColor: `${GOLD}20`, color: GOLD }}>
+                        {lead.assignedDepartment}
+                      </span>
+                    )}
+                  </div>
+                  <p className="font-semibold text-[13px]" style={{ color: TEAL }}>{lead.name}</p>
+                  <p className="text-[11px] opacity-50 mt-0.5">{lead.service}</p>
+                  {lead.phone && <p className="text-[10px] opacity-30 mt-1">{lead.phone}</p>}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── ASSIGNMENT PANEL ─────────────────────────────────────────────────────────
+function AssignmentPanel({ leads, selectedDept, setSelectedDept, handleAssign, isPending }: {
+  leads: any[];
+  totalLeads?: number;
+  selectedDept: Record<number, string>;
+  setSelectedDept: React.Dispatch<React.SetStateAction<Record<number, string>>>;
+  handleAssign: (id: number) => void;
+  isPending: boolean;
+}) {
+  if (leads.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border p-14 text-center" style={{ borderColor: `${TEAL}10` }}>
+        <CheckCircle2 size={44} className="mx-auto mb-4" style={{ color: "#22C55E", opacity: 0.3 }} />
+        <p className="text-[15px] font-medium opacity-50" style={{ color: TEAL }}>All caught up</p>
+        <p className="text-[12px] opacity-30 mt-2">New leads from the intake desk will appear here.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border" style={{ borderColor: `${TEAL}10` }}>
+      <div className="p-4 border-b flex items-center gap-2" style={{ borderColor: `${TEAL}08` }}>
+        <AlertCircle size={15} style={{ color: "#EF4444" }} />
+        <h3 className="text-[13px] font-bold uppercase tracking-wider" style={{ color: TEAL }}>
+          Unassigned Leads — {leads.length} require action
+        </h3>
+      </div>
+      <div className="divide-y" style={{ borderColor: `${TEAL}06` }}>
+        {leads.map((lead: any) => (
+          <div key={lead.id} className="p-4 flex flex-col md:flex-row md:items-center gap-4 hover:bg-gray-50/40 transition-colors">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[11px] font-bold tracking-wider font-mono px-2 py-0.5 rounded" style={{ backgroundColor: `${TEAL}08`, color: TEAL }}>{lead.ref}</span>
+                <span className="text-[11px] opacity-30">{new Date(lead.createdAt).toLocaleDateString()}</span>
+              </div>
+              <p className="font-semibold text-[15px]" style={{ color: TEAL }}>{lead.name}</p>
+              <p className="text-[12px] opacity-50 mt-0.5">{lead.service}{lead.businessName ? ` · ${lead.businessName}` : ""}</p>
+              {lead.context && <p className="text-[12px] opacity-30 mt-1 line-clamp-1">{lead.context}</p>}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Select
+                value={selectedDept[lead.id] || ""}
+                onValueChange={v => setSelectedDept(prev => ({ ...prev, [lead.id]: v }))}
+              >
+                <SelectTrigger className="w-[190px] text-[13px]" style={{ borderColor: `${TEAL}20` }}>
+                  <SelectValue placeholder="Select Department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEPARTMENTS.map(d => (
+                    <SelectItem key={d.value} value={d.value}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
+                        {d.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={() => handleAssign(lead.id)}
+                disabled={isPending || !selectedDept[lead.id]}
+                size="sm"
+                className="shrink-0 rounded-lg"
+                style={{ backgroundColor: TEAL, color: GOLD }}
+              >
+                {isPending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                <span className="ml-1.5">Assign</span>
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── COMMISSIONS VIEW ─────────────────────────────────────────────────────────
+function CommissionsView() {
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawStatus, setWithdrawStatus] = useState<"idle" | "submitted">("idle");
+
+  const SUMMARY = [
+    { label: "Total Earned (MTD)", value: "₦170,000",   color: GOLD,      icon: <TrendingUp size={16} /> },
+    { label: "Pending Payout",     value: "₦50,000",    color: "#EAB308",  icon: <Clock size={16} /> },
+    { label: "Paid This Month",    value: "₦120,000",   color: "#22C55E",  icon: <CheckCircle2 size={16} /> },
+    { label: "Next Payout Date",   value: "25th April", color: "#3B82F6",  icon: <CalendarCheck size={16} /> },
+  ];
+
+  const HISTORY = [
+    { ref: "COM-001", date: "2026-03-01", amount: "₦45,000", dept: "BizDoc",    status: "Paid" },
+    { ref: "COM-002", date: "2026-03-08", amount: "₦35,000", dept: "Systemise", status: "Paid" },
+    { ref: "COM-003", date: "2026-03-15", amount: "₦40,000", dept: "Skills",    status: "Paid" },
+    { ref: "COM-004", date: "2026-03-22", amount: "₦50,000", dept: "BizDoc",    status: "Pending" },
+  ];
+
+  const statusColor = (s: string) =>
+    s === "Paid"       ? { bg: "#22C55E15", text: "#16A34A" } :
+    s === "Processing" ? { bg: "#3B82F615", text: "#3B82F6" } :
+                         { bg: "#EAB30815", text: "#B45309" };
+
+  function handleWithdraw() {
+    const amt = parseFloat(withdrawAmount.replace(/[^0-9.]/g, ""));
+    if (!withdrawAmount || isNaN(amt)) { toast.error("Enter a valid amount"); return; }
+    if (amt < 20000) { toast.error("Minimum withdrawal is ₦20,000"); return; }
+    setWithdrawStatus("submitted");
+    toast.success("Withdrawal request submitted — processing within 24h (working days)");
+    setWithdrawAmount("");
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {SUMMARY.map(({ label, value, color, icon }) => (
+          <div key={label} className="rounded-2xl border p-5 flex flex-col gap-2" style={{ backgroundColor: WHITE, borderColor: `${TEAL}10` }}>
+            <div style={{ color }}>{icon}</div>
+            <p className="text-xl font-semibold leading-none" style={{ color }}>{value}</p>
+            <p className="text-[11px] uppercase tracking-wider opacity-40" style={{ color: TEAL }}>{label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* History */}
+        <div className="md:col-span-2 rounded-2xl border" style={{ backgroundColor: WHITE, borderColor: `${TEAL}10` }}>
+          <div className="p-4 border-b flex items-center gap-2" style={{ borderColor: `${TEAL}08` }}>
+            <DollarSign size={15} style={{ color: GOLD }} />
+            <h3 className="text-[13px] font-bold uppercase tracking-wider" style={{ color: TEAL }}>Commission History</h3>
+          </div>
+          <div className="divide-y" style={{ borderColor: `${TEAL}06` }}>
+            {HISTORY.map(row => {
+              const sc = statusColor(row.status);
+              return (
+                <div key={row.ref} className="px-4 py-3 flex items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[11px] font-mono font-bold opacity-40" style={{ color: TEAL }}>{row.ref}</span>
+                      <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${GOLD}18`, color: GOLD }}>{row.dept}</span>
+                    </div>
+                    <p className="text-[13px] font-semibold" style={{ color: TEAL }}>{row.amount}</p>
+                    <p className="text-[11px] opacity-30 mt-0.5">{row.date}</p>
+                  </div>
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0" style={{ backgroundColor: sc.bg, color: sc.text }}>{row.status}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Withdrawal */}
+        <div className="rounded-2xl border p-5 space-y-4" style={{ backgroundColor: WHITE, borderColor: `${TEAL}10` }}>
+          <div className="flex items-center gap-2 mb-1">
+            <Wallet size={15} style={{ color: GOLD }} />
+            <h3 className="text-[13px] font-bold uppercase tracking-wider" style={{ color: TEAL }}>Request Withdrawal</h3>
+          </div>
+          <div className="space-y-2 text-[12px] opacity-50" style={{ color: TEAL }}>
+            <p>• Minimum: <strong>₦20,000</strong></p>
+            <p>• Account: Locked to KYC-verified account</p>
+            <p>• Processing: 24h (working days)</p>
+          </div>
+          {withdrawStatus === "submitted" ? (
+            <div className="p-4 rounded-xl text-center" style={{ backgroundColor: "#22C55E10" }}>
+              <CheckCircle2 size={28} className="mx-auto mb-2" style={{ color: "#16A34A" }} />
+              <p className="text-[13px] font-semibold" style={{ color: "#16A34A" }}>Request Submitted</p>
+              <p className="text-[11px] opacity-60 mt-1">Status: Submitted → Processing → Completed</p>
+              <button onClick={() => setWithdrawStatus("idle")} className="mt-3 text-[11px] underline opacity-40" style={{ color: TEAL }}>New request</button>
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-wider opacity-40 block mb-1.5" style={{ color: TEAL }}>Amount (₦)</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 50000"
+                  value={withdrawAmount}
+                  onChange={e => setWithdrawAmount(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border text-[14px] outline-none"
+                  style={{ borderColor: `${TEAL}18`, color: TEAL, backgroundColor: MILK }}
+                />
+              </div>
+              <Button className="w-full" style={{ backgroundColor: TEAL, color: GOLD }} onClick={handleWithdraw}>
+                Submit Request
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── HELPERS VIEW ─────────────────────────────────────────────────────────────
+const MOCK_HELPERS = [
+  { id: 1, name: "Aminu Sule",    email: "aminu@helper.com",   phone: "0801 234 5678", status: "Active",   leads: 5, lastActive: "2h ago" },
+  { id: 2, name: "Blessing Obi",  email: "blessing@helper.com", phone: "0802 345 6789", status: "Active",   leads: 3, lastActive: "5h ago" },
+  { id: 3, name: "Yusuf Danlami", email: "yusuf@helper.com",   phone: "0803 456 7890", status: "Inactive", leads: 0, lastActive: "3d ago" },
+];
+
+function HelpersView() {
+  const [showAssign, setShowAssign]     = useState(false);
+  const [selectedHelper, setSelectedHelper] = useState("");
+  const [leadRef, setLeadRef]           = useState("");
+  const [deadline, setDeadline]         = useState("");
+
+  function handleAssignToHelper() {
+    if (!selectedHelper || !leadRef) { toast.error("Select a helper and enter a lead reference"); return; }
+    toast.success(`Lead ${leadRef} assigned to ${selectedHelper}`);
+    setShowAssign(false); setLeadRef(""); setDeadline(""); setSelectedHelper("");
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl border" style={{ borderColor: `${TEAL}10` }}>
+        <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: `${TEAL}08` }}>
+          <h3 className="text-[13px] font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: TEAL }}>
+            <Users size={15} style={{ color: GOLD }} /> Helper Directory
+          </h3>
+          <button
+            onClick={() => setShowAssign(v => !v)}
+            className="flex items-center gap-1.5 text-[12px] font-bold px-3 py-1.5 rounded-lg"
+            style={{ backgroundColor: TEAL, color: GOLD }}
+          >
+            <Plus size={12} /> Assign Lead to Helper
+          </button>
+        </div>
+
+        {showAssign && (
+          <div className="p-4 border-b grid grid-cols-1 md:grid-cols-4 gap-3 items-end" style={{ borderColor: `${TEAL}08`, backgroundColor: `${TEAL}03` }}>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider opacity-40 block mb-1" style={{ color: TEAL }}>Helper</label>
+              <select
+                value={selectedHelper}
+                onChange={e => setSelectedHelper(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border text-[13px] outline-none"
+                style={{ borderColor: `${TEAL}18`, color: TEAL }}
+              >
+                <option value="">Select helper…</option>
+                {MOCK_HELPERS.filter(h => h.status === "Active").map(h => (
+                  <option key={h.id} value={h.name}>{h.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider opacity-40 block mb-1" style={{ color: TEAL }}>Lead Reference</label>
+              <input
+                type="text"
+                placeholder="e.g. HZ-AB1234"
+                value={leadRef}
+                onChange={e => setLeadRef(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border text-[13px] outline-none"
+                style={{ borderColor: `${TEAL}18`, color: TEAL }}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider opacity-40 block mb-1" style={{ color: TEAL }}>Follow-up Deadline</label>
+              <input
+                type="date"
+                value={deadline}
+                onChange={e => setDeadline(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border text-[13px] outline-none"
+                style={{ borderColor: `${TEAL}18`, color: TEAL }}
+              />
+            </div>
+            <Button style={{ backgroundColor: TEAL, color: GOLD }} onClick={handleAssignToHelper}>Assign</Button>
+          </div>
+        )}
+
+        <div className="divide-y" style={{ borderColor: `${TEAL}06` }}>
+          {MOCK_HELPERS.map(h => (
+            <div key={h.id} className="px-4 py-3 flex flex-col md:flex-row md:items-center gap-3 hover:bg-gray-50/40 transition-colors">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-[14px] shrink-0" style={{ backgroundColor: `${TEAL}10`, color: TEAL }}>
+                {h.name[0]}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-semibold" style={{ color: TEAL }}>{h.name}</p>
+                <p className="text-[12px] opacity-40">{h.email} · {h.phone}</p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                <span className="text-[11px] opacity-40" style={{ color: TEAL }}>{h.leads} leads · {h.lastActive}</span>
+                <span
+                  className="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                  style={{
+                    backgroundColor: h.status === "Active" ? "#22C55E15" : "#EF444415",
+                    color: h.status === "Active" ? "#16A34A" : "#EF4444",
+                  }}
+                >
+                  {h.status}
+                </span>
+                <button className="text-[11px] px-2.5 py-1 rounded-lg border" style={{ borderColor: `${TEAL}20`, color: TEAL }}
+                  onClick={() => toast(`Viewing activity for ${h.name}`)}>View Activity</button>
+                <button className="text-[11px] px-2.5 py-1 rounded-lg border" style={{ borderColor: `${TEAL}20`, color: TEAL }}
+                  onClick={() => toast(`Edit access for ${h.name}`)}>Edit Access</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border p-5" style={{ borderColor: `${TEAL}10` }}>
+        <h3 className="text-[13px] font-bold uppercase tracking-wider mb-4 flex items-center gap-2" style={{ color: TEAL }}>
+          <AlertCircle size={14} style={{ color: GOLD }} /> Helper Access Rules
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {[
+            { allowed: false, text: "Cannot view commission data" },
+            { allowed: false, text: "Cannot assign leads to departments" },
+            { allowed: false, text: "Cannot access CSO settings" },
+            { allowed: false, text: "Cannot delete records" },
+            { allowed: true,  text: "Can view only their assigned leads" },
+            { allowed: true,  text: "Can update status of assigned leads" },
+            { allowed: true,  text: "All actions are logged for CSO review" },
+          ].map((rule, i) => (
+            <div key={i} className="flex items-center gap-2.5 text-[13px]" style={{ color: TEAL }}>
+              <span className={rule.allowed ? "text-green-500" : "text-red-400"}>{rule.allowed ? "✓" : "✗"}</span>
+              <span className="opacity-60">{rule.text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── QUICK ACCESS VIEW ────────────────────────────────────────────────────────
+const QUICK_ACCESS_ITEMS = [
+  {
+    category: "Documents",
+    icon: <FileText size={15} />,
+    color: "#3B82F6",
+    items: [
+      { label: "BizDoc SOP PDF" },
+      { label: "Systemise Service Catalog" },
+      { label: "Skills Program Brochure" },
+      { label: "Commission Formula Guide" },
+      { label: "Lead Qualification Checklist" },
+    ],
+  },
+  {
+    category: "Spreadsheets",
+    icon: <Activity size={15} />,
+    color: "#22C55E",
+    items: [
+      { label: "Leads_Master" },
+      { label: "Assignments" },
+      { label: "KPI_Dashboard" },
+      { label: "Attendance_Log" },
+    ],
+  },
+  {
+    category: "Folders",
+    icon: <FolderOpen size={15} />,
+    color: "#F59E0B",
+    items: [
+      { label: "Client Documents" },
+      { label: "Templates" },
+      { label: "Proposals" },
+    ],
+  },
+  {
+    category: "Tools",
+    icon: <Zap size={15} />,
+    color: "#8B5CF6",
+    items: [
+      { label: "Calendar Link" },
+      { label: "Email Template Library" },
+      { label: "Proposal Generator" },
+      { label: "Reference Number Lookup" },
+    ],
+  },
+];
+
+function QuickAccessView() {
+  const [customLinks, setCustomLinks] = useState<{ label: string; href: string }[]>([]);
+  const [newLabel, setNewLabel] = useState("");
+  const [newHref,  setNewHref]  = useState("");
+
+  function addCustomLink() {
+    if (!newLabel || !newHref) { toast.error("Enter both a label and a URL"); return; }
+    setCustomLinks(prev => [...prev, { label: newLabel, href: newHref }]);
+    setNewLabel(""); setNewHref("");
+    toast.success("Shortcut added");
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {QUICK_ACCESS_ITEMS.map(cat => (
+          <div key={cat.category} className="rounded-2xl border" style={{ backgroundColor: WHITE, borderColor: `${TEAL}10` }}>
+            <div className="p-4 border-b flex items-center gap-2" style={{ borderColor: `${TEAL}06` }}>
+              <span style={{ color: cat.color }}>{cat.icon}</span>
+              <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: TEAL }}>{cat.category}</h3>
+            </div>
+            <div className="p-3 flex flex-col gap-1">
+              {cat.items.map(item => (
+                <button
+                  key={item.label}
+                  onClick={() => toast(`Opening: ${item.label}`)}
+                  className="flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all hover:opacity-80 group text-left w-full"
+                  style={{ color: TEAL }}
+                >
+                  <span className="opacity-70 group-hover:opacity-100">{item.label}</span>
+                  <ExternalLink size={11} className="opacity-20 group-hover:opacity-50 shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-2xl border" style={{ borderColor: `${TEAL}10` }}>
+        <div className="p-4 border-b flex items-center gap-2" style={{ borderColor: `${TEAL}08` }}>
+          <Link2 size={14} style={{ color: GOLD }} />
+          <h3 className="text-[13px] font-bold uppercase tracking-wider" style={{ color: TEAL }}>Custom Shortcuts</h3>
+        </div>
+        <div className="p-4">
+          <div className="flex gap-3 mb-4">
+            <input
+              type="text"
+              placeholder="Label"
+              value={newLabel}
+              onChange={e => setNewLabel(e.target.value)}
+              className="flex-1 px-3 py-2.5 rounded-xl border text-[13px] outline-none"
+              style={{ borderColor: `${TEAL}15`, color: TEAL }}
+            />
+            <input
+              type="url"
+              placeholder="https://…"
+              value={newHref}
+              onChange={e => setNewHref(e.target.value)}
+              className="flex-1 px-3 py-2.5 rounded-xl border text-[13px] outline-none"
+              style={{ borderColor: `${TEAL}15`, color: TEAL }}
+            />
+            <Button style={{ backgroundColor: TEAL, color: GOLD }} onClick={addCustomLink}>
+              <Plus size={14} />
+            </Button>
+          </div>
+          {customLinks.length === 0 ? (
+            <p className="text-[13px] opacity-30 text-center py-4" style={{ color: TEAL }}>No custom shortcuts yet. Add one above.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {customLinks.map((l, i) => (
+                <a
+                  key={i}
+                  href={l.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium border transition-all hover:opacity-80"
+                  style={{ borderColor: `${TEAL}15`, color: TEAL }}
+                >
+                  <Link2 size={10} style={{ color: GOLD }} />
+                  {l.label}
+                  <ExternalLink size={10} className="opacity-30" />
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ATTENDANCE VIEW ──────────────────────────────────────────────────────────
+function AttendanceView({ attendance, isLoading }: { attendance: any[]; isLoading: boolean }) {
+  const today = new Date().toLocaleDateString("en-NG", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+
+  return (
+    <div className="bg-white rounded-2xl border" style={{ borderColor: `${TEAL}10` }}>
+      <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: `${TEAL}08` }}>
+        <h3 className="text-[13px] font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: TEAL }}>
+          <CalendarCheck size={15} style={{ color: GOLD }} /> Today's Attendance
+        </h3>
+        <span className="text-[11px] opacity-40" style={{ color: TEAL }}>{today}</span>
+      </div>
+      {isLoading ? (
+        <div className="flex justify-center p-10">
+          <Loader2 size={20} className="animate-spin" style={{ color: GOLD }} />
+        </div>
+      ) : attendance.length === 0 ? (
+        <div className="text-center p-14">
+          <CalendarCheck size={36} className="mx-auto mb-4 opacity-20" style={{ color: TEAL }} />
+          <p className="text-[14px] opacity-40" style={{ color: TEAL }}>No attendance records for today yet.</p>
+        </div>
+      ) : (
+        <div className="divide-y" style={{ borderColor: `${TEAL}06` }}>
+          {attendance.map((record: any) => {
+            const checkedIn  = !!record.checkIn;
+            const checkedOut = !!record.checkOut;
+            const hoursWorked = checkedIn && checkedOut
+              ? ((new Date(record.checkOut).getTime() - new Date(record.checkIn).getTime()) / 3600000).toFixed(1)
+              : null;
+            return (
+              <div key={record.id} className="px-4 py-3 flex items-center gap-4">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0" style={{ backgroundColor: `${TEAL}10`, color: TEAL }}>
+                  {(record.userName || "?").charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] font-semibold truncate" style={{ color: TEAL }}>{record.userName || "Staff Member"}</p>
+                  <div className="flex items-center gap-3 mt-0.5">
+                    {checkedIn  && <span className="text-[11px] text-green-600 font-medium">In: {new Date(record.checkIn).toLocaleTimeString("en-NG",  { hour: "2-digit", minute: "2-digit" })}</span>}
+                    {checkedOut && <span className="text-[11px] text-blue-600  font-medium">Out: {new Date(record.checkOut).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}</span>}
+                    {hoursWorked && <span className="text-[11px] opacity-40">{hoursWorked}h</span>}
+                  </div>
+                </div>
+                <div
+                  className="text-[10px] font-bold uppercase px-2 py-1 rounded-full"
+                  style={{
+                    backgroundColor: checkedOut ? "#22C55E15" : checkedIn ? "#3B82F615" : "#EF444415",
+                    color: checkedOut ? "#16A34A" : checkedIn ? "#3B82F6" : "#EF4444",
+                  }}
+                >
+                  {checkedOut ? "Done" : checkedIn ? "Present" : "Absent"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── DEPT UPDATES VIEW ────────────────────────────────────────────────────────
+const MOCK_UPDATES = [
+  { id: 1, dept: "BizDoc",    assignmentId: "ASG-001", time: "10 min ago",
+    message: "Work started on CAC registration — NorthStar Trading Co.",
+    statusChange: "In Progress", nextStep: "Awaiting certified copy from client", acknowledged: false },
+  { id: 2, dept: "Systemise", assignmentId: "ASG-002", time: "1h ago",
+    message: "Waiting for brand assets from client before continuing website build.",
+    statusChange: null, nextStep: "Client to upload logo files", acknowledged: false },
+  { id: 3, dept: "Skills",    assignmentId: "ASG-003", time: "3h ago",
+    message: "Ready for CSO review — Business Essentials Cohort 3 enrollment confirmed.",
+    statusChange: "Review", nextStep: "CSO to notify client of start date", acknowledged: true },
+  { id: 4, dept: "BizDoc",    assignmentId: "ASG-004", time: "Yesterday",
+    message: "Submitted to CAC — awaiting external approval.",
+    statusChange: null, nextStep: "Awaiting external approval (3–5 business days)", acknowledged: true },
+];
+
+const DEPT_COLORS: Record<string, string> = { BizDoc: "#1B4D3E", Systemise: "#0A1F1C", Skills: "#8B6914" };
+
+function DeptUpdatesView() {
+  const [updates, setUpdates] = useState(MOCK_UPDATES);
+  const [filter, setFilter]   = useState<"all" | "unread">("all");
+
+  const visible    = filter === "unread" ? updates.filter(u => !u.acknowledged) : updates;
+  const unreadCount = updates.filter(u => !u.acknowledged).length;
+
+  function acknowledge(id: number) {
+    setUpdates(prev => prev.map(u => u.id === id ? { ...u, acknowledged: true } : u));
+    toast.success("Update acknowledged");
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h3 className="text-[13px] font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: TEAL }}>
+            <Bell size={14} style={{ color: GOLD }} /> Department Updates
+          </h3>
+          {unreadCount > 0 && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "#EF444415", color: "#EF4444" }}>
+              {unreadCount} unread
+            </span>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {(["all", "unread"] as const).map(f => (
+            <button key={f} onClick={() => setFilter(f)}
+              className="text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-all"
+              style={{
+                backgroundColor: filter === f ? TEAL : "transparent",
+                color: filter === f ? GOLD : TEAL,
+                borderColor: `${TEAL}20`,
+              }}>
+              {f === "all" ? "All" : "Unread"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {visible.length === 0 ? (
+          <div className="bg-white rounded-2xl border p-12 text-center" style={{ borderColor: `${TEAL}10` }}>
+            <CheckCircle2 size={36} className="mx-auto mb-3 opacity-20" style={{ color: "#22C55E" }} />
+            <p className="text-[14px] opacity-40" style={{ color: TEAL }}>All updates acknowledged</p>
+          </div>
+        ) : visible.map(u => (
+          <div
+            key={u.id}
+            className="bg-white rounded-2xl border overflow-hidden"
+            style={{ borderColor: u.acknowledged ? `${TEAL}08` : `${GOLD}30` }}
+          >
+            <div className="px-4 py-2.5 flex items-center justify-between border-b" style={{ borderColor: `${TEAL}06` }}>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: DEPT_COLORS[u.dept] ?? GOLD }} />
+                <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: DEPT_COLORS[u.dept] ?? GOLD }}>{u.dept}</span>
+                <span className="text-[10px] font-mono opacity-30" style={{ color: TEAL }}>{u.assignmentId}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] opacity-30" style={{ color: TEAL }}>{u.time}</span>
+                {!u.acknowledged && <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+              </div>
+            </div>
+            <div className="px-4 py-3">
+              <p className="text-[13px] font-medium mb-2" style={{ color: TEAL }}>{u.message}</p>
+              {u.statusChange && (
+                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full mr-2" style={{ backgroundColor: "#3B82F615", color: "#3B82F6" }}>
+                  Status → {u.statusChange}
+                </span>
+              )}
+              <p className="text-[12px] opacity-40 mt-2 flex items-center gap-1" style={{ color: TEAL }}>
+                <ChevronRight size={12} /> Next: {u.nextStep}
+              </p>
+            </div>
+            {!u.acknowledged && (
+              <div className="px-4 py-2.5 border-t flex gap-2" style={{ borderColor: `${TEAL}06` }}>
+                <button onClick={() => acknowledge(u.id)}
+                  className="text-[11px] font-bold px-3 py-1.5 rounded-lg"
+                  style={{ backgroundColor: TEAL, color: GOLD }}>Acknowledge</button>
+                <button onClick={() => toast("Requesting more info from department")}
+                  className="text-[11px] font-bold px-3 py-1.5 rounded-lg border"
+                  style={{ borderColor: `${TEAL}20`, color: TEAL }}>Request More Info</button>
+                <button onClick={() => toast("Flagged for CEO review")}
+                  className="text-[11px] font-bold px-3 py-1.5 rounded-lg border"
+                  style={{ borderColor: "#EF444430", color: "#EF4444" }}>Escalate</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── CALENDAR VIEW ────────────────────────────────────────────────────────────
+const APPOINTMENT_TYPES = [
+  { value: "discovery",  label: "Discovery Call",   color: "#3B82F6" },
+  { value: "follow_up",  label: "Follow-up Call",   color: "#22C55E" },
+  { value: "review",     label: "Dept Review",      color: "#EAB308" },
+  { value: "payment",    label: "Payment Reminder", color: "#F97316" },
+  { value: "delivery",   label: "Delivery Call",    color: "#C9A97E" },
+  { value: "retention",  label: "Retention Check",  color: "#8B5CF6" },
+];
+
+const MOCK_APPOINTMENTS = [
+  { id: 1, client: "Kemi Adeyemi Properties", ref: "HZ-AB1234", type: "discovery", date: "2026-03-23", time: "10:00 AM", duration: 30, notes: "Interested in CAC + trademark",      status: "confirmed" },
+  { id: 2, client: "NorthStar Trading Co",    ref: "HZ-CD5678", type: "follow_up", date: "2026-03-23", time: "2:00 PM",  duration: 20, notes: "Check on document upload",          status: "pending" },
+  { id: 3, client: "Abuja Digital Ventures",  ref: "HZ-EF9012", type: "delivery",  date: "2026-03-25", time: "11:00 AM", duration: 45, notes: "Final handover — Systemise website", status: "confirmed" },
+  { id: 4, client: "Lagos Fashion House",     ref: "HZ-GH3456", type: "retention", date: "2026-03-27", time: "3:00 PM",  duration: 15, notes: "30-day retention check",             status: "confirmed" },
+];
+
+const STATUS_C: Record<string, { bg: string; text: string }> = {
+  confirmed: { bg: "#22C55E15", text: "#16A34A" },
+  pending:   { bg: "#EAB30815", text: "#B45309" },
+  completed: { bg: "#3B82F615", text: "#3B82F6" },
+  cancelled: { bg: "#EF444415", text: "#EF4444" },
+};
+
+function CalendarView() {
+  const [typeFilter, setTypeFilter] = useState("all");
+
+  const visible = typeFilter === "all" ? MOCK_APPOINTMENTS : MOCK_APPOINTMENTS.filter(a => a.type === typeFilter);
+  const today   = MOCK_APPOINTMENTS.filter(a => a.date === "2026-03-23");
+
+  return (
+    <div className="space-y-5">
+      {/* Filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] font-bold uppercase tracking-wider opacity-40" style={{ color: TEAL }}>Filter:</span>
+        <button onClick={() => setTypeFilter("all")}
+          className="text-[11px] font-bold px-2.5 py-1 rounded-full border"
+          style={{ backgroundColor: typeFilter === "all" ? TEAL : "transparent", color: typeFilter === "all" ? GOLD : TEAL, borderColor: `${TEAL}20` }}>
+          All
+        </button>
+        {APPOINTMENT_TYPES.map(t => (
+          <button key={t.value} onClick={() => setTypeFilter(t.value)}
+            className="text-[11px] font-bold px-2.5 py-1 rounded-full border"
+            style={{ backgroundColor: typeFilter === t.value ? t.color : "transparent", color: typeFilter === t.value ? WHITE : TEAL, borderColor: `${TEAL}15` }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Today strip */}
+      <div className="bg-white rounded-2xl border p-4" style={{ borderColor: `${TEAL}10` }}>
+        <p className="text-[11px] font-bold uppercase tracking-wider mb-3 opacity-40" style={{ color: TEAL }}>
+          Today — {today.length} appointment{today.length !== 1 ? "s" : ""}
+        </p>
+        {today.length === 0 ? (
+          <p className="text-[13px] opacity-30 text-center py-4" style={{ color: TEAL }}>No appointments today</p>
+        ) : (
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {today.map(a => {
+              const apptType = APPOINTMENT_TYPES.find(t => t.value === a.type);
+              return (
+                <div key={a.id} className="shrink-0 px-4 py-3 rounded-xl border min-w-[180px]" style={{ borderColor: `${apptType?.color ?? GOLD}30`, backgroundColor: `${apptType?.color ?? GOLD}08` }}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: apptType?.color ?? GOLD }}>{apptType?.label}</p>
+                  <p className="text-[13px] font-semibold leading-tight" style={{ color: TEAL }}>{a.client}</p>
+                  <p className="text-[11px] opacity-50 mt-1" style={{ color: TEAL }}>{a.time} · {a.duration}m</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* All appointments */}
+      <div className="bg-white rounded-2xl border" style={{ borderColor: `${TEAL}10` }}>
+        <div className="p-4 border-b flex items-center gap-2" style={{ borderColor: `${TEAL}08` }}>
+          <CalendarDays size={14} style={{ color: GOLD }} />
+          <h3 className="text-[13px] font-bold uppercase tracking-wider" style={{ color: TEAL }}>Upcoming Appointments</h3>
+        </div>
+        <div className="divide-y" style={{ borderColor: `${TEAL}06` }}>
+          {visible.length === 0 ? (
+            <p className="text-center text-[13px] opacity-30 p-10" style={{ color: TEAL }}>No appointments found</p>
+          ) : visible.map(a => {
+            const apptType = APPOINTMENT_TYPES.find(t => t.value === a.type);
+            const sc = STATUS_C[a.status] ?? STATUS_C.pending;
+            return (
+              <div key={a.id} className="px-4 py-3 flex flex-col md:flex-row md:items-center gap-3 hover:bg-gray-50/40 transition-colors">
+                <div className="w-3 h-3 rounded-full shrink-0 hidden md:block mt-1" style={{ backgroundColor: apptType?.color ?? GOLD }} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full" style={{ backgroundColor: `${apptType?.color ?? GOLD}15`, color: apptType?.color ?? GOLD }}>
+                      {apptType?.label}
+                    </span>
+                    <span className="text-[10px] font-mono opacity-30" style={{ color: TEAL }}>{a.ref}</span>
+                  </div>
+                  <p className="text-[14px] font-semibold" style={{ color: TEAL }}>{a.client}</p>
+                  {a.notes && <p className="text-[12px] opacity-40 mt-0.5 truncate">{a.notes}</p>}
+                </div>
+                <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                  <div className="text-right">
+                    <p className="text-[12px] font-medium" style={{ color: TEAL }}>{a.date}</p>
+                    <p className="text-[11px] opacity-40" style={{ color: TEAL }}>{a.time} · {a.duration}m</p>
+                  </div>
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: sc.bg, color: sc.text }}>{a.status}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}

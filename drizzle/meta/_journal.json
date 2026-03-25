@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1774047386906,
+      "tag": "0000_smooth_pride",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1774047616362,
+      "tag": "0001_harsh_sheva_callister",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1774049966259,
+      "tag": "0002_dashing_scalphunter",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1774099432842,
+      "tag": "0003_bored_ben_parker",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1774100552142,
+      "tag": "0004_fluffy_squadron_supreme",
+      "breakpoints": true
+    }
+  ]
+}

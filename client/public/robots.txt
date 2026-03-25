@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /hub/
+Disallow: /bizdoc/dashboard
+Disallow: /founder/dashboard
+Disallow: /affiliate/dashboard
+Disallow: /skills/admin
+Disallow: /skills/student
+Disallow: /client/dashboard
+Disallow: /dev-login
+
+Sitemap: https://hamzury.com/sitemap.xml

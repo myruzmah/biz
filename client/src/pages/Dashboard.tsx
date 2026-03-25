@@ -1,0 +1,788 @@
+import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
+import PageMeta from "@/components/PageMeta";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  LayoutDashboard, FileSearch, Clock, CheckCircle2, CheckSquare,
+  User, LogOut, Loader2, FileText, Upload, Trash2, MessageSquare,
+  Send, Sparkles, Phone, ArrowLeft, AlertCircle, BarChart3,
+  ClipboardList, FileUp, Bot,
+} from "lucide-react";
+import { useState, useRef, useCallback, useMemo } from "react";
+import { useLocation } from "wouter";
+import { toast } from "sonner";
+import { Streamdown } from "streamdown";
+
+type TaskStatus = "Not Started" | "In Progress" | "Waiting on Client" | "Submitted" | "Completed";
+
+export default function Dashboard() {
+  const { user, loading, logout } = useAuth({ redirectOnUnauthenticated: true });
+  const [, setLocation] = useLocation();
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  const [mobileShowDetail, setMobileShowDetail] = useState(false);
+  const [taskSearch, setTaskSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const tasksQuery = trpc.tasks.list.useQuery(undefined, { refetchInterval: 15000 });
+  const statsQuery = trpc.tasks.stats.useQuery();
+
+  const tasks = tasksQuery.data || [];
+  const stats = statsQuery.data;
+  const selectedTask = tasks.find(t => t.id === selectedTaskId);
+
+  const filteredTasks = useMemo(() => {
+    let result = tasks;
+    if (statusFilter !== "all") {
+      result = result.filter(t => t.status === statusFilter);
+    }
+    if (taskSearch.trim()) {
+      const q = taskSearch.toLowerCase();
+      result = result.filter(t =>
+        t.clientName?.toLowerCase().includes(q) ||
+        t.ref?.toLowerCase().includes(q) ||
+        t.service?.toLowerCase().includes(q) ||
+        t.businessName?.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [tasks, taskSearch, statusFilter]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#F8F5F0" }}>
+        <Loader2 className="animate-spin" size={32} style={{ color: "#C9A97E" }} />
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
+  const handleSelectTask = (id: number) => {
+    setSelectedTaskId(id);
+    setMobileShowDetail(true);
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#FAFAFA" }}>
+      <PageMeta title="BizDoc Staff Dashboard — HAMZURY" description="Task management dashboard for HAMZURY BizDoc compliance staff." />
+      {/* Dashboard Nav */}
+      <nav className="fixed top-0 left-0 right-0 px-4 md:px-8 py-3 bg-[#0A1F1C] z-50 flex justify-between items-center shadow-lg">
+        <div className="flex items-center gap-4">
+          <div
+            className="text-lg font-extrabold tracking-tight cursor-pointer flex items-center gap-1"
+            onClick={() => setLocation("/")}
+          >
+            <span style={{ color: "#F8F5F0" }}>BizDoc</span>
+            <span style={{ color: "#C9A97E", fontWeight: 400 }}>Consult</span>
+          </div>
+          <span className="hidden md:inline text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full" style={{ backgroundColor: "#C9A97E", color: "#0A1F1C" }}>
+            Staff Dashboard
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-[13px] hidden md:block" style={{ color: "#C9A97E" }}>
+            {user.name || user.email}
+          </span>
+          <button
+            onClick={logout}
+            className="flex items-center gap-1 text-[13px] font-semibold transition-colors"
+            style={{ color: "#F8F5F0" }}
+          >
+            <LogOut size={16} />
+            <span className="hidden md:inline">Exit</span>
+          </button>
+        </div>
+      </nav>
+
+      <div className="pt-[56px] flex-1 flex h-[calc(100vh-56px)] overflow-hidden">
+        {/* SIDEBAR - Task Queue */}
+        <div className={`${mobileShowDetail ? "hidden md:flex" : "flex"} w-full md:w-[380px] bg-white border-r border-[#0A1F1C]/10 flex-col h-full shrink-0`}>
+          {/* Stats Bar */}
+          {stats && (
+            <div className="p-4 border-b border-[#0A1F1C]/5 grid grid-cols-3 gap-2">
+              <StatCard label="Active" value={stats.totalTasks - stats.completed} color="#C9A97E" />
+              <StatCard label="Waiting" value={stats.waitingOnClient} color="#EAB308" />
+              <StatCard label="Done" value={stats.completed} color="#22C55E" />
+            </div>
+          )}
+
+          <div className="p-4 border-b border-[#0A1F1C]/5">
+            <h2 className="text-base font-bold flex items-center gap-2 mb-3" style={{ color: "#0A1F1C" }}>
+              <LayoutDashboard size={18} style={{ color: "#C9A97E" }} />
+              Task Queue
+            </h2>
+            {/* Search */}
+            <input
+              type="text"
+              value={taskSearch}
+              onChange={e => setTaskSearch(e.target.value)}
+              placeholder="Search by name, ref, service..."
+              className="w-full text-[13px] px-3 py-2 rounded-lg border border-[#0A1F1C]/10 bg-[#F8F5F0] outline-none focus:border-[#C9A97E] transition-colors mb-2"
+              style={{ color: "#2C2C2C" }}
+            />
+            {/* Status filter */}
+            <div className="flex flex-wrap gap-1">
+              {["all", "Not Started", "In Progress", "Waiting on Client", "Submitted", "Completed"].map(s => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border transition-colors"
+                  style={{
+                    borderColor: statusFilter === s ? "#C9A97E" : "rgba(10,31,28,0.1)",
+                    backgroundColor: statusFilter === s ? "#C9A97E20" : "transparent",
+                    color: statusFilter === s ? "#C9A97E" : "rgba(44,44,44,0.5)",
+                  }}
+                >
+                  {s === "all" ? "All" : s === "Not Started" ? "New" : s === "In Progress" ? "Active" : s === "Waiting on Client" ? "Waiting" : s}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] opacity-40 mt-2">{filteredTasks.length} of {tasks.length} tasks</p>
+          </div>
+
+          <ScrollArea className="flex-1">
+            <div className="p-3 flex flex-col gap-2">
+              {tasksQuery.isLoading ? (
+                <div className="flex items-center justify-center p-8">
+                  <Loader2 className="animate-spin" size={24} style={{ color: "#C9A97E" }} />
+                </div>
+              ) : filteredTasks.length === 0 ? (
+                <div className="text-center p-8 opacity-50 text-sm">
+                  <ClipboardList size={32} className="mx-auto mb-3 opacity-30" />
+                  {tasks.length === 0 ? "No tasks yet. Leads from the chat widget will appear here." : "No tasks match your search."}
+                </div>
+              ) : (
+                filteredTasks.map(task => (
+                  <div
+                    key={task.id}
+                    onClick={() => handleSelectTask(task.id)}
+                    className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                      selectedTaskId === task.id
+                        ? "border-[#C9A97E] bg-[#F8F5F0]/50 shadow-sm"
+                        : "border-[#0A1F1C]/5 hover:border-[#0A1F1C]/20 bg-white"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-[11px] font-bold tracking-wider px-2 py-1 rounded bg-[#0A1F1C]/5" style={{ color: "#0A1F1C" }}>
+                        {task.ref}
+                      </span>
+                      <StatusBadge status={task.status} />
+                    </div>
+                    <h4 className="font-semibold text-[15px] mb-1" style={{ color: "#2C2C2C" }}>{task.clientName}</h4>
+                    <p className="text-[13px] opacity-70 mb-2 flex items-center gap-1">
+                      <FileSearch size={14} /> {task.service}
+                    </p>
+                    {task.businessName && (
+                      <p className="text-[12px] opacity-50">{task.businessName}</p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* MAIN AREA - Task Detail */}
+        <div className={`${mobileShowDetail || !selectedTaskId ? "" : "hidden md:flex"} flex-1 flex-col overflow-y-auto ${mobileShowDetail ? "flex" : "hidden md:flex"}`} style={{ backgroundColor: "#FAFAFA" }}>
+          {selectedTask ? (
+            <TaskDetail
+              task={selectedTask}
+              onBack={() => setMobileShowDetail(false)}
+              onRefresh={() => tasksQuery.refetch()}
+            />
+          ) : (
+            <div className="flex-1 flex items-center justify-center flex-col opacity-40">
+              <LayoutDashboard size={64} className="mb-4" />
+              <p className="text-lg font-medium">Select a task from the queue</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Task Detail ─────────────────────────────────────────────────────────────
+
+function TaskDetail({ task, onBack, onRefresh }: { task: any; onBack: () => void; onRefresh: () => void }) {
+  const utils = trpc.useUtils();
+
+  return (
+    <div className="p-4 md:p-8 max-w-5xl mx-auto w-full">
+      {/* Mobile back button */}
+      <button
+        onClick={onBack}
+        className="md:hidden flex items-center gap-2 text-[13px] font-semibold mb-4"
+        style={{ color: "#0A1F1C" }}
+      >
+        <ArrowLeft size={16} /> Back to Queue
+      </button>
+
+      {/* Header */}
+      <div className="mb-6 flex flex-col md:flex-row justify-between items-start gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
+            <h1 className="text-2xl md:text-3xl font-bold" style={{ color: "#0A1F1C" }}>{task.clientName}</h1>
+            <StatusBadge status={task.status} />
+          </div>
+          <div className="text-[14px] opacity-70 flex flex-wrap gap-4" style={{ color: "#2C2C2C" }}>
+            <span>Ref: <strong>{task.ref}</strong></span>
+            <span>Service: <strong>{task.service}</strong></span>
+            {task.phone && <span className="flex items-center gap-1"><Phone size={12} /> {task.phone}</span>}
+          </div>
+        </div>
+        <StatusUpdater taskId={task.id} currentStatus={task.status} onRefresh={onRefresh} />
+      </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="checklist" className="w-full">
+        <TabsList className="mb-6 bg-white border border-[#0A1F1C]/10">
+          <TabsTrigger value="checklist" className="gap-1.5"><CheckSquare size={14} /> SOP Checklist</TabsTrigger>
+          <TabsTrigger value="notes" className="gap-1.5"><FileText size={14} /> Notes</TabsTrigger>
+          <TabsTrigger value="documents" className="gap-1.5"><FileUp size={14} /> Documents</TabsTrigger>
+          <TabsTrigger value="whatsapp" className="gap-1.5"><MessageSquare size={14} /> WhatsApp</TabsTrigger>
+          <TabsTrigger value="ai" className="gap-1.5"><Bot size={14} /> AI Assistant</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="checklist">
+          <ChecklistPanel taskId={task.id} />
+        </TabsContent>
+        <TabsContent value="notes">
+          <NotesPanel taskId={task.id} currentNotes={task.notes || ""} onRefresh={onRefresh} />
+        </TabsContent>
+        <TabsContent value="documents">
+          <DocumentsPanel taskId={task.id} />
+        </TabsContent>
+        <TabsContent value="whatsapp">
+          <WhatsAppPanel taskId={task.id} phone={task.phone || ""} />
+        </TabsContent>
+        <TabsContent value="ai">
+          <AIAssistantPanel task={task} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// ─── Status Updater ──────────────────────────────────────────────────────────
+
+function StatusUpdater({ taskId, currentStatus, onRefresh }: { taskId: number; currentStatus: TaskStatus; onRefresh: () => void }) {
+  const updateStatus = trpc.tasks.updateStatus.useMutation({
+    onSuccess: () => {
+      onRefresh();
+      toast.success("Status updated");
+    },
+    onError: () => toast.error("Failed to update status"),
+  });
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[11px] uppercase tracking-wider font-bold opacity-60 md:text-right" style={{ color: "#0A1F1C" }}>
+        Update Status
+      </span>
+      <Select
+        value={currentStatus}
+        onValueChange={(val) => updateStatus.mutate({ id: taskId, status: val as TaskStatus })}
+        disabled={updateStatus.isPending}
+      >
+        <SelectTrigger className="w-[200px] bg-white border-[#C9A97E] font-semibold shadow-sm" style={{ color: "#0A1F1C" }}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="Not Started">Not Started</SelectItem>
+          <SelectItem value="In Progress">In Progress</SelectItem>
+          <SelectItem value="Waiting on Client">Waiting on Client</SelectItem>
+          <SelectItem value="Submitted">Submitted to Registry</SelectItem>
+          <SelectItem value="Completed">Completed</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+// ─── Checklist Panel ─────────────────────────────────────────────────────────
+
+function ChecklistPanel({ taskId }: { taskId: number }) {
+  const checklistQuery = trpc.checklist.getByTaskId.useQuery({ taskId });
+  const toggleItem = trpc.checklist.toggle.useMutation({
+    onSuccess: () => checklistQuery.refetch(),
+    onError: () => toast.error("Failed to toggle item"),
+  });
+
+  const items = checklistQuery.data || [];
+  const preItems = items.filter(i => i.phase === "pre");
+  const duringItems = items.filter(i => i.phase === "during");
+  const postItems = items.filter(i => i.phase === "post");
+
+  const totalItems = items.length;
+  const checkedItems = items.filter(i => i.checked).length;
+  const progress = totalItems > 0 ? Math.round((checkedItems / totalItems) * 100) : 0;
+
+  if (checklistQuery.isLoading) {
+    return <div className="flex items-center justify-center p-8"><Loader2 className="animate-spin" size={24} style={{ color: "#C9A97E" }} /></div>;
+  }
+
+  return (
+    <div className="bg-white p-6 rounded-2xl border border-[#0A1F1C]/10 shadow-sm">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-sm font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: "#0A1F1C" }}>
+          <CheckSquare size={16} style={{ color: "#C9A97E" }} /> SOP Execution Checklist
+        </h3>
+        <span className="text-[12px] font-semibold px-3 py-1 rounded-full" style={{ backgroundColor: progress === 100 ? "#22C55E20" : "#C9A97E20", color: progress === 100 ? "#22C55E" : "#C9A97E" }}>
+          {progress}% Complete
+        </span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-full h-2 bg-[#0A1F1C]/5 rounded-full mb-8 overflow-hidden">
+        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, backgroundColor: progress === 100 ? "#22C55E" : "#C9A97E" }} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <ChecklistPhase title="Pre-Task" items={preItems} onToggle={(id) => toggleItem.mutate({ itemId: id })} />
+        <ChecklistPhase title="Execution" items={duringItems} onToggle={(id) => toggleItem.mutate({ itemId: id })} />
+        <ChecklistPhase title="Post-Task" items={postItems} onToggle={(id) => toggleItem.mutate({ itemId: id })} />
+      </div>
+    </div>
+  );
+}
+
+function ChecklistPhase({ title, items, onToggle }: { title: string; items: any[]; onToggle: (id: number) => void }) {
+  return (
+    <div>
+      <h4 className="text-[13px] font-bold mb-4 border-b border-[#0A1F1C]/10 pb-2" style={{ color: "#0A1F1C" }}>{title}</h4>
+      <div className="flex flex-col gap-3">
+        {items.map(item => (
+          <label key={item.id} className="flex items-start gap-3 cursor-pointer group">
+            <div
+              onClick={() => onToggle(item.id)}
+              className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0 ${
+                item.checked ? "bg-[#0A1F1C] border-[#0A1F1C]" : "border-[#0A1F1C]/30 bg-white group-hover:border-[#C9A97E]"
+              }`}
+            >
+              {item.checked && <CheckCircle2 size={14} color="#C9A97E" />}
+            </div>
+            <span className={`text-[13px] leading-snug transition-all ${item.checked ? "opacity-50 line-through" : ""}`} style={{ color: "#2C2C2C" }}>
+              {item.label}
+            </span>
+          </label>
+        ))}
+        {items.length === 0 && <p className="text-[13px] opacity-40">No items</p>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Notes Panel ─────────────────────────────────────────────────────────────
+
+function NotesPanel({ taskId, currentNotes, onRefresh }: { taskId: number; currentNotes: string; onRefresh: () => void }) {
+  const [notes, setNotes] = useState(currentNotes);
+  const updateNotes = trpc.tasks.updateNotes.useMutation({
+    onSuccess: () => { onRefresh(); toast.success("Notes saved"); },
+    onError: () => toast.error("Failed to save notes"),
+  });
+
+  return (
+    <div className="bg-white p-6 rounded-2xl border border-[#0A1F1C]/10 shadow-sm">
+      <h3 className="text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2" style={{ color: "#0A1F1C" }}>
+        <User size={16} style={{ color: "#C9A97E" }} /> Client Brief & Notes
+      </h3>
+      <Textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="Add notes about this task..."
+        className="min-h-[200px] bg-[#F8F5F0] border-[#0A1F1C]/10 mb-4"
+        style={{ color: "#2C2C2C" }}
+      />
+      <Button
+        onClick={() => updateNotes.mutate({ id: taskId, notes })}
+        disabled={updateNotes.isPending || notes === currentNotes}
+        style={{ backgroundColor: "#0A1F1C", color: "#C9A97E" }}
+      >
+        {updateNotes.isPending ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+        Save Notes
+      </Button>
+    </div>
+  );
+}
+
+// ─── Documents Panel ─────────────────────────────────────────────────────────
+
+function DocumentsPanel({ taskId }: { taskId: number }) {
+  const docsQuery = trpc.documents.getByTaskId.useQuery({ taskId });
+  const uploadDoc = trpc.documents.upload.useMutation({
+    onSuccess: () => { docsQuery.refetch(); toast.success("Document uploaded"); },
+    onError: () => toast.error("Failed to upload document"),
+  });
+  const deleteDoc = trpc.documents.delete.useMutation({
+    onSuccess: () => { docsQuery.refetch(); toast.success("Document deleted"); },
+    onError: () => toast.error("Failed to delete document"),
+  });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File size must be under 10MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(",")[1];
+      uploadDoc.mutate({
+        taskId,
+        fileName: file.name,
+        fileData: base64,
+        mimeType: file.type,
+        fileSize: file.size,
+      });
+    };
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, [taskId, uploadDoc]);
+
+  const docs = docsQuery.data || [];
+
+  return (
+    <div className="bg-white p-6 rounded-2xl border border-[#0A1F1C]/10 shadow-sm">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-sm font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: "#0A1F1C" }}>
+          <FileUp size={16} style={{ color: "#C9A97E" }} /> Documents
+        </h3>
+        <div>
+          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls" />
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadDoc.isPending}
+            variant="outline"
+            className="border-[#C9A97E] hover:bg-[#C9A97E]/10"
+            style={{ color: "#0A1F1C" }}
+          >
+            {uploadDoc.isPending ? <Loader2 size={14} className="animate-spin mr-2" /> : <Upload size={14} className="mr-2" />}
+            Upload
+          </Button>
+        </div>
+      </div>
+
+      {docsQuery.isLoading ? (
+        <div className="flex items-center justify-center p-8"><Loader2 className="animate-spin" size={24} style={{ color: "#C9A97E" }} /></div>
+      ) : docs.length === 0 ? (
+        <div className="text-center p-8 opacity-40 text-sm">
+          <FileText size={32} className="mx-auto mb-3 opacity-30" />
+          No documents uploaded yet.
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {docs.map(doc => (
+            <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-[#0A1F1C]/5 bg-[#F8F5F0]/50">
+              <div className="flex items-center gap-3 min-w-0">
+                <FileText size={18} style={{ color: "#C9A97E" }} className="shrink-0" />
+                <div className="min-w-0">
+                  <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-[14px] font-medium hover:underline truncate block" style={{ color: "#0A1F1C" }}>
+                    {doc.fileName}
+                  </a>
+                  <p className="text-[11px] opacity-50">
+                    {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(1)} KB` : ""} · {new Date(doc.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0">
+                    <Trash2 size={14} />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete document?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete <strong>{doc.fileName}</strong>. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => deleteDoc.mutate({ docId: doc.id, taskId })}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── WhatsApp Panel ──────────────────────────────────────────────────────────
+
+function WhatsAppPanel({ taskId, phone }: { taskId: number; phone: string }) {
+  const [phoneInput, setPhoneInput] = useState(phone);
+  const [customMsg, setCustomMsg] = useState("");
+  const sendMsg = trpc.whatsapp.sendMessage.useMutation({
+    onSuccess: (data) => {
+      window.open(data.whatsappUrl, "_blank");
+      toast.success("WhatsApp message prepared");
+    },
+    onError: () => toast.error("Failed to prepare message"),
+  });
+
+  const sendTemplate = (type: "file_created" | "status_update" | "document_pickup") => {
+    if (!phoneInput.trim()) { toast.error("Please enter a phone number"); return; }
+    sendMsg.mutate({ taskId, phone: phoneInput, messageType: type });
+  };
+
+  const sendCustom = () => {
+    if (!phoneInput.trim()) { toast.error("Please enter a phone number"); return; }
+    if (!customMsg.trim()) { toast.error("Please enter a message"); return; }
+    sendMsg.mutate({ taskId, phone: phoneInput, messageType: "custom", customMessage: customMsg });
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-2xl border border-[#0A1F1C]/10 shadow-sm">
+      <h3 className="text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2" style={{ color: "#0A1F1C" }}>
+        <MessageSquare size={16} style={{ color: "#22C55E" }} /> WhatsApp Messaging
+      </h3>
+
+      <div className="mb-6">
+        <label className="text-[12px] font-semibold uppercase tracking-wider opacity-60 mb-2 block">Client Phone</label>
+        <Input
+          value={phoneInput}
+          onChange={(e) => setPhoneInput(e.target.value)}
+          placeholder="+234 xxx xxx xxxx"
+          className="bg-[#F8F5F0] border-[#0A1F1C]/10"
+        />
+      </div>
+
+      <div className="mb-6">
+        <label className="text-[12px] font-semibold uppercase tracking-wider opacity-60 mb-3 block">Quick Templates</label>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => sendTemplate("file_created")}
+            variant="outline"
+            className="border-[#22C55E]/30 hover:bg-[#22C55E]/10 text-[13px]"
+            disabled={sendMsg.isPending}
+          >
+            <FileText size={14} className="mr-1.5" /> File Created
+          </Button>
+          <Button
+            onClick={() => sendTemplate("status_update")}
+            variant="outline"
+            className="border-[#3B82F6]/30 hover:bg-[#3B82F6]/10 text-[13px]"
+            disabled={sendMsg.isPending}
+          >
+            <Clock size={14} className="mr-1.5" /> Status Update
+          </Button>
+          <Button
+            onClick={() => sendTemplate("document_pickup")}
+            variant="outline"
+            className="border-[#C9A97E]/30 hover:bg-[#C9A97E]/10 text-[13px]"
+            disabled={sendMsg.isPending}
+          >
+            <CheckCircle2 size={14} className="mr-1.5" /> Document Pickup
+          </Button>
+        </div>
+      </div>
+
+      <div>
+        <label className="text-[12px] font-semibold uppercase tracking-wider opacity-60 mb-2 block">Custom Message</label>
+        <Textarea
+          value={customMsg}
+          onChange={(e) => setCustomMsg(e.target.value)}
+          placeholder="Type a custom message..."
+          className="min-h-[100px] bg-[#F8F5F0] border-[#0A1F1C]/10 mb-3"
+        />
+        <Button
+          onClick={sendCustom}
+          disabled={sendMsg.isPending || !customMsg.trim()}
+          style={{ backgroundColor: "#22C55E", color: "white" }}
+        >
+          {sendMsg.isPending ? <Loader2 size={14} className="animate-spin mr-2" /> : <Send size={14} className="mr-2" />}
+          Send via WhatsApp
+        </Button>
+      </div>
+
+      <p className="text-[11px] opacity-40 mt-4">
+        Messages will open WhatsApp Web with the pre-filled message. You can review before sending.
+      </p>
+    </div>
+  );
+}
+
+// ─── AI Assistant Panel ──────────────────────────────────────────────────────
+
+function AIAssistantPanel({ task }: { task: any }) {
+  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [input, setInput] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const chatMutation = trpc.ai.chat.useMutation({
+    onSuccess: (data) => {
+      setMessages(prev => [...prev, { role: "assistant", content: data.response }]);
+    },
+    onError: () => {
+      setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again." }]);
+    },
+  });
+
+  const handleSend = () => {
+    if (!input.trim() || chatMutation.isPending) return;
+    const msg = input.trim();
+    setMessages(prev => [...prev, { role: "user", content: msg }]);
+    setInput("");
+    chatMutation.mutate({
+      message: msg,
+      taskContext: {
+        ref: task.ref,
+        service: task.service,
+        status: task.status,
+        clientName: task.clientName,
+      },
+    });
+  };
+
+  const suggestedPrompts = [
+    `What documents are needed for ${task.service}?`,
+    `What are the next steps for a "${task.status}" task?`,
+    "Draft a client update message",
+    "What are the CAC requirements?",
+  ];
+
+  return (
+    <div className="bg-white rounded-2xl border border-[#0A1F1C]/10 shadow-sm flex flex-col" style={{ height: "500px" }}>
+      <div className="p-4 border-b border-[#0A1F1C]/5 flex items-center gap-2">
+        <Sparkles size={16} style={{ color: "#C9A97E" }} />
+        <h3 className="text-sm font-bold" style={{ color: "#0A1F1C" }}>BizDoc AI — Compliance Assistant</h3>
+      </div>
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+        {messages.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-4">
+            <Sparkles size={32} className="opacity-20" />
+            <p className="text-sm opacity-50 text-center">Ask about Nigerian compliance regulations, get suggestions, or draft communications.</p>
+            <div className="flex flex-wrap justify-center gap-2 max-w-md">
+              {suggestedPrompts.map((prompt, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setInput(prompt); }}
+                  className="text-[12px] px-3 py-1.5 rounded-full border border-[#0A1F1C]/10 hover:border-[#C9A97E] hover:bg-[#F8F5F0] transition-colors"
+                  style={{ color: "#0A1F1C" }}
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`max-w-[85%] rounded-2xl px-4 py-3 text-[14px] ${
+                  msg.role === "user"
+                    ? "rounded-tr-sm"
+                    : "rounded-tl-sm border border-[#0A1F1C]/5"
+                }`}
+                style={{
+                  backgroundColor: msg.role === "user" ? "#0A1F1C" : "#F8F5F0",
+                  color: msg.role === "user" ? "#F8F5F0" : "#2C2C2C",
+                }}
+              >
+                {msg.role === "assistant" ? (
+                  <div className="prose prose-sm max-w-none">
+                    <Streamdown>{msg.content}</Streamdown>
+                  </div>
+                ) : (
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+        {chatMutation.isPending && (
+          <div className="flex justify-start">
+            <div className="rounded-2xl rounded-tl-sm border border-[#0A1F1C]/5 px-4 py-3" style={{ backgroundColor: "#F8F5F0" }}>
+              <Loader2 size={16} className="animate-spin" style={{ color: "#C9A97E" }} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="p-4 border-t border-[#0A1F1C]/5 flex gap-2">
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSend()}
+          placeholder="Ask about compliance, regulations, next steps..."
+          className="flex-1 bg-[#F8F5F0] border-[#0A1F1C]/10"
+          disabled={chatMutation.isPending}
+        />
+        <Button
+          onClick={handleSend}
+          disabled={!input.trim() || chatMutation.isPending}
+          style={{ backgroundColor: "#0A1F1C", color: "#C9A97E" }}
+        >
+          <Send size={16} />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Shared Components ───────────────────────────────────────────────────────
+
+const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+  "Not Started":      { bg: "rgba(44,44,44,0.06)",  text: "#6B7280", label: "Not Started" },
+  "In Progress":      { bg: "rgba(59,130,246,0.08)", text: "#3B82F6", label: "In Progress" },
+  "Waiting on Client":{ bg: "rgba(234,179,8,0.10)",  text: "#B45309", label: "Waiting" },
+  "Submitted":        { bg: "rgba(201,169,126,0.15)", text: "#C9A97E", label: "Submitted" },
+  "Completed":        { bg: "rgba(34,197,94,0.10)",  text: "#16A34A", label: "Completed" },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const style = STATUS_COLORS[status] || { bg: "rgba(44,44,44,0.06)", text: "#6B7280", label: status };
+  return (
+    <span
+      className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full"
+      style={{ backgroundColor: style.bg, color: style.text }}
+    >
+      {style.label}
+    </span>
+  );
+}
+
+function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className="text-center p-2 rounded-lg" style={{ backgroundColor: `${color}10` }}>
+      <p className="text-xl font-bold" style={{ color }}>{value}</p>
+      <p className="text-[10px] uppercase tracking-wider font-semibold opacity-60">{label}</p>
+    </div>
+  );
+}

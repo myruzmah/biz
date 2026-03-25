@@ -1,0 +1,334 @@
+import { useState, useRef, useEffect, useCallback } from "react";
+import { trpc } from "@/lib/trpc";
+import { X, Send, Loader2, RotateCcw } from "lucide-react";
+
+/* ═══════════════════════════════════════════════════════════════════════
+   BIZDOC DESK — Pure AI-driven conversational intake
+   Amara: warm, professional BizDoc compliance advisor
+   ═══════════════════════════════════════════════════════════════════════ */
+
+const G     = "#1B4D3E";
+const Au    = "#C9A97E";
+const CREAM = "#F8F5EE";
+const W     = "#FFFFFF";
+
+interface Msg { id: string; role: "bot" | "user"; text: string }
+type Phase = "chat" | "contact" | "payment";
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  preselectedService?: string | null;
+}
+
+export function BizDocDesk({ open, onClose, preselectedService }: Props) {
+  const [messages, setMessages]         = useState<Msg[]>([]);
+  const [input, setInput]               = useState("");
+  const [loading, setLoading]           = useState(false);
+  const [phase, setPhase]               = useState<Phase>("chat");
+  const [showReadyBtn, setShowReadyBtn] = useState(false);
+  const [contactName, setContactName]   = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [paymentDone, setPaymentDone]   = useState(false);
+  const [initialized, setInitialized]   = useState(false);
+
+  const endRef   = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const bizdocChat = trpc.bizdoc.chat.useMutation();
+
+  const uid = () => `${Date.now()}-${Math.random()}`;
+
+  // Auto-scroll
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading, phase, showReadyBtn]);
+
+  // Open — show Amara's first message
+  useEffect(() => {
+    if (open && !initialized) {
+      const greeting = preselectedService
+        ? `Hi 👋 I'm Amara, your BizDoc advisor. I can see you're looking at ${preselectedService} — before I put anything together, what's your name?`
+        : "Hi 👋 I'm Amara, your BizDoc compliance advisor. Before we get into anything — what's your name?";
+      setMessages([{ id: uid(), role: "bot", text: greeting }]);
+      setInitialized(true);
+      setTimeout(() => inputRef.current?.focus(), 300);
+    }
+  }, [open, initialized, preselectedService]);
+
+  // Close — reset all state
+  useEffect(() => {
+    if (!open) {
+      setInitialized(false);
+      setMessages([]);
+      setInput("");
+      setPhase("chat");
+      setShowReadyBtn(false);
+      setPaymentDone(false);
+      setContactName("");
+      setContactPhone("");
+    }
+  }, [open]);
+
+  const addBot = useCallback((text: string) => {
+    setMessages(p => [...p, { id: uid(), role: "bot", text }]);
+  }, []);
+
+  const send = useCallback(async (text: string) => {
+    if (!text.trim() || loading) return;
+    setInput("");
+    setShowReadyBtn(false);
+    setMessages(p => [...p, { id: uid(), role: "user", text }]);
+    setLoading(true);
+
+    const history = messages.map(m => ({
+      role: m.role === "bot" ? "assistant" as const : "user" as const,
+      text: m.text,
+    }));
+
+    try {
+      const res = await bizdocChat.mutateAsync({ message: text, history });
+      let reply = res.reply;
+
+      // Parse tokens
+      const hasReady   = reply.includes("[READY]");
+      const hasPayment = reply.includes("[SHOW_PAYMENT]");
+      reply = reply.replace(/\[READY\]/g, "").replace(/\[SHOW_PAYMENT\]/g, "").trim();
+
+      setLoading(false);
+      if (reply) addBot(reply);
+
+      if (hasPayment) {
+        setPhase("payment");
+      } else if (hasReady) {
+        setShowReadyBtn(true);
+      }
+    } catch {
+      setLoading(false);
+      addBot("I'm having a moment — please try again or reach us directly on WhatsApp.");
+    }
+  }, [messages, loading, bizdocChat, addBot]);
+
+  const submitContact = useCallback(async () => {
+    if (!contactName.trim() || contactPhone.replace(/\D/g, "").length < 7) return;
+    setPhase("chat");
+    setLoading(true);
+
+    const history = messages.map(m => ({
+      role: m.role === "bot" ? "assistant" as const : "user" as const,
+      text: m.text,
+    }));
+
+    try {
+      const res = await bizdocChat.mutateAsync({
+        message: `[System: Contact collected — Name: ${contactName}, Phone: ${contactPhone}. Please confirm warmly and proceed to payment.]`,
+        history,
+      });
+      let reply = res.reply.replace(/\[READY\]/g, "").replace(/\[SHOW_PAYMENT\]/g, "").trim();
+      setLoading(false);
+      if (reply) addBot(reply);
+      setTimeout(() => setPhase("payment"), 400);
+    } catch {
+      setLoading(false);
+      setPhase("payment");
+    }
+  }, [contactName, contactPhone, messages, bizdocChat, addBot]);
+
+  const restart = useCallback(() => {
+    setMessages([]);
+    setPhase("chat");
+    setShowReadyBtn(false);
+    setPaymentDone(false);
+    setContactName("");
+    setContactPhone("");
+    setInitialized(false);
+  }, []);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-end md:items-center justify-center"
+      style={{ backgroundColor: "rgba(10,31,28,0.65)", backdropFilter: "blur(8px)" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="w-full md:max-w-lg md:rounded-2xl overflow-hidden shadow-2xl flex flex-col rounded-t-2xl"
+        style={{ height: "90vh", maxHeight: "700px", backgroundColor: CREAM }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* ── Header ── */}
+        <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ backgroundColor: G }}>
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+            style={{ backgroundColor: Au, color: G }}
+          >A</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold" style={{ color: W }}>Amara · BizDoc Advisor</p>
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+              <span className="text-[11px] truncate" style={{ color: Au, opacity: 0.8 }}>Online now</span>
+            </div>
+          </div>
+          <button onClick={restart} className="p-1.5 opacity-60 hover:opacity-100 transition-opacity" title="Restart">
+            <RotateCcw size={15} color={W} />
+          </button>
+          <button onClick={onClose} className="p-1.5 opacity-70 hover:opacity-100 transition-opacity">
+            <X size={18} color={W} />
+          </button>
+        </div>
+
+        {/* ── Messages ── */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+          {messages.map(m => (
+            <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                className="max-w-[82%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap"
+                style={
+                  m.role === "user"
+                    ? { backgroundColor: G, color: Au, borderBottomRightRadius: 4 }
+                    : { backgroundColor: W, color: "#2C2C2C", borderBottomLeftRadius: 4, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }
+                }
+              >
+                {m.text}
+              </div>
+            </div>
+          ))}
+
+          {/* Typing dots */}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="px-4 py-3 rounded-2xl flex gap-1 items-center" style={{ backgroundColor: W, borderBottomLeftRadius: 4 }}>
+                {[0, 1, 2].map(i => (
+                  <span
+                    key={i}
+                    className="w-2 h-2 rounded-full animate-bounce"
+                    style={{ backgroundColor: G, opacity: 0.4, animationDelay: `${i * 0.15}s` }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* "Open My File" CTA */}
+          {showReadyBtn && !loading && (
+            <div className="flex justify-center pt-1">
+              <button
+                onClick={() => { setShowReadyBtn(false); setPhase("contact"); }}
+                className="px-6 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 shadow-sm"
+                style={{ backgroundColor: G, color: Au }}
+              >
+                Open My File →
+              </button>
+            </div>
+          )}
+
+          {/* Contact form — inline */}
+          {phase === "contact" && (
+            <div className="rounded-2xl p-4 border" style={{ backgroundColor: W, borderColor: `${G}20` }}>
+              <p className="text-sm font-semibold mb-0.5" style={{ color: G }}>A few quick details</p>
+              <p className="text-xs mb-3" style={{ color: "#6B7280" }}>To open your file and assign your specialist.</p>
+              <input
+                placeholder="Full name"
+                value={contactName}
+                onChange={e => setContactName(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl text-sm mb-2 outline-none border"
+                style={{ borderColor: `${G}25`, backgroundColor: CREAM, color: "#2C2C2C" }}
+              />
+              <input
+                placeholder="WhatsApp number"
+                value={contactPhone}
+                onChange={e => setContactPhone(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && submitContact()}
+                className="w-full px-3 py-2.5 rounded-xl text-sm mb-3 outline-none border"
+                style={{ borderColor: `${G}25`, backgroundColor: CREAM, color: "#2C2C2C" }}
+              />
+              <button
+                onClick={submitContact}
+                disabled={!contactName.trim() || contactPhone.replace(/\D/g, "").length < 7}
+                className="w-full py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-40"
+                style={{ backgroundColor: G, color: Au }}
+              >
+                Continue →
+              </button>
+            </div>
+          )}
+
+          {/* Payment card */}
+          {phase === "payment" && (
+            <div className="rounded-2xl p-4 border-l-4" style={{ backgroundColor: W, borderLeftColor: Au }}>
+              <p className="text-sm font-bold mb-0.5" style={{ color: G }}>Make Payment</p>
+              <p className="text-xs mb-3" style={{ color: "#6B7280" }}>
+                Transfer to activate your file and receive your tracking reference.
+              </p>
+              <div className="rounded-xl p-3 mb-3 space-y-1.5 text-[13px]" style={{ backgroundColor: CREAM }}>
+                <div><span style={{ color: "#9CA3AF" }}>Bank</span> · <strong style={{ color: "#1A1A1A" }}>Moniepoint</strong></div>
+                <div><span style={{ color: "#9CA3AF" }}>Account</span> · <strong className="tracking-widest text-[15px]" style={{ color: "#1A1A1A" }}>8067149356</strong></div>
+                <div><span style={{ color: "#9CA3AF" }}>Name</span> · <strong style={{ color: "#1A1A1A" }}>BIZDOC CONSULT</strong></div>
+              </div>
+              {!paymentDone ? (
+                <button
+                  onClick={() => setPaymentDone(true)}
+                  className="w-full py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90"
+                  style={{ backgroundColor: G, color: Au }}
+                >
+                  I've Made the Payment →
+                </button>
+              ) : (
+                <div className="rounded-xl p-3 text-xs space-y-2" style={{ backgroundColor: "#E8F4EC", border: `1px solid ${G}20` }}>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
+                    <strong style={{ color: G }}>Confirming your payment…</strong>
+                  </div>
+                  <p style={{ color: "#374151" }}>
+                    We're verifying your transfer to activate your tracking reference (HAM-2026-XX-XXXX).
+                    This typically takes 5–15 minutes during business hours.
+                  </p>
+                  <div className="pt-1 border-t" style={{ borderColor: `${G}15` }}>
+                    <p style={{ color: "#6B7280" }}>Didn't send the correct amount? Top up to:</p>
+                    <p className="font-semibold" style={{ color: "#1A1A1A" }}>8067149356 · Moniepoint · BIZDOC CONSULT</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div ref={endRef} />
+        </div>
+
+        {/* ── Input bar ── */}
+        {phase === "chat" && (
+          <div
+            className="px-3 py-3 flex-shrink-0 border-t"
+            style={{ borderColor: `${G}12`, backgroundColor: W }}
+          >
+            <div
+              className="flex items-center gap-2 rounded-full px-4 py-2.5"
+              style={{ backgroundColor: CREAM, border: `1.5px solid ${G}18` }}
+            >
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
+                placeholder="Tell me about your situation…"
+                className="flex-1 text-sm outline-none bg-transparent"
+                style={{ color: "#2C2C2C" }}
+              />
+              <button
+                onClick={() => send(input)}
+                disabled={!input.trim() || loading}
+                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-30"
+                style={{ backgroundColor: G }}
+              >
+                {loading
+                  ? <Loader2 size={14} color={Au} className="animate-spin" />
+                  : <Send size={13} color={Au} />
+                }
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
