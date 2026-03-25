@@ -308,70 +308,59 @@ export default function Home() {
 
       {/* Mobile full-screen menu */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-40 md:hidden flex flex-col" style={{ backgroundColor: TEAL, paddingTop: "72px" }}>
-          {/* Brand line */}
-          <div className="px-8 pt-8 pb-6 border-b" style={{ borderColor: `${GOLD}20` }}>
-            <p className="text-[10px] font-bold tracking-[0.3em] uppercase mb-1" style={{ color: GOLD }}>Hamzury Innovation Hub</p>
-            <p className="text-[12px] font-light" style={{ color: `${CREAM}70` }}>Business Infrastructure</p>
-          </div>
-          {/* Nav items */}
-          <div className="flex-1 flex flex-col px-8 py-8 gap-2">
-            <button
-              className="text-2xl font-light tracking-tight text-left py-3 border-b transition-opacity hover:opacity-60"
-              style={{ color: CREAM, borderColor: `${GOLD}15` }}
-              onClick={() => { scrollTo("what"); setMobileMenuOpen(false); }}>
-              Services
-            </button>
-            <button
-              className="text-2xl font-light tracking-tight text-left py-3 border-b transition-opacity hover:opacity-60"
-              style={{ color: CREAM, borderColor: `${GOLD}15` }}
-              onClick={() => { scrollTo("process"); setMobileMenuOpen(false); }}>
-              Process
-            </button>
-            <Link href="/founder"
-              className="text-2xl font-light tracking-tight py-3 border-b block transition-opacity hover:opacity-60"
-              style={{ color: CREAM, borderColor: `${GOLD}15` }}
-              onClick={() => setMobileMenuOpen(false)}>
-              Founder
-            </Link>
-            <button
-              className="text-2xl font-light tracking-tight text-left py-3 transition-opacity hover:opacity-60"
-              style={{ color: CREAM }}
-              onClick={() => { openTrackTab(); setMobileMenuOpen(false); }}>
-              My Update
-            </button>
-          </div>
-          {/* Department chips */}
-          <div className="px-8 pb-6">
-            <p className="text-[10px] font-bold tracking-[0.2em] uppercase mb-4" style={{ color: `${GOLD}80` }}>Departments</p>
-            <div className="flex flex-col gap-2">
-              {[
-                { label: "BizDoc Consult", href: "/bizdoc", color: "#1B4D3E" },
-                { label: "Systemise", href: "/systemise", color: TEAL },
-                { label: "Hamzury Skills", href: "/skills", color: "#8B6914" },
-              ].map(d => (
-                <Link key={d.href} href={d.href}
-                  className="flex items-center gap-3 py-2 transition-opacity hover:opacity-70"
-                  onClick={() => setMobileMenuOpen(false)}>
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: GOLD }} />
-                  <span className="text-sm font-medium" style={{ color: CREAM }}>{d.label}</span>
-                </Link>
-              ))}
+        <div className="fixed inset-0 z-40 md:hidden flex flex-col" style={{ backgroundColor: TEAL, paddingTop: "64px" }}>
+
+          {/* ── Main nav links ── */}
+          <div className="flex-1 flex flex-col px-7 pt-6 overflow-y-auto">
+            {[
+              { label: "Services",   action: () => { scrollTo("what"); setMobileMenuOpen(false); } },
+              { label: "Process",    action: () => { scrollTo("process"); setMobileMenuOpen(false); } },
+              { label: "Pricing",    action: () => { window.location.href = "/pricing"; } },
+              { label: "Founder",    action: () => { window.location.href = "/founder"; } },
+              { label: "My Update",  action: () => { openTrackTab(); setMobileMenuOpen(false); } },
+            ].map(item => (
+              <button key={item.label}
+                className="text-left text-[26px] font-light tracking-tight py-3.5 border-b transition-opacity active:opacity-50"
+                style={{ color: CREAM, borderColor: `${GOLD}12` }}
+                onClick={item.action}>
+                {item.label}
+              </button>
+            ))}
+
+            {/* ── Departments ── */}
+            <div className="mt-6 mb-4">
+              <p className="text-[10px] font-bold tracking-[0.25em] uppercase mb-3" style={{ color: `${GOLD}70` }}>Departments</p>
+              <div className="flex flex-col gap-1">
+                {[
+                  { label: "BizDoc Consult",  href: "/bizdoc"    },
+                  { label: "Systemise",        href: "/systemise" },
+                  { label: "Hamzury Skills",   href: "/skills"    },
+                ].map(d => (
+                  <a key={d.href} href={d.href}
+                    className="flex items-center gap-3 py-2.5 transition-opacity active:opacity-50"
+                    onClick={() => setMobileMenuOpen(false)}>
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: GOLD }} />
+                    <span className="text-[15px] font-medium" style={{ color: CREAM }}>{d.label}</span>
+                    <span className="ml-auto text-[11px] opacity-30" style={{ color: GOLD }}>→</span>
+                  </a>
+                ))}
+              </div>
             </div>
           </div>
-          {/* Login / Sign Out */}
-          <div className="px-8 pb-10" style={{ paddingBottom: "calc(2.5rem + env(safe-area-inset-bottom))" }}>
-            <div className="h-px mb-6 opacity-20" style={{ backgroundColor: GOLD }} />
+
+          {/* ── Bottom: Login / Sign Out ── */}
+          <div className="px-7 py-6" style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))", borderTop: `1px solid ${GOLD}15` }}>
             {isAuthenticated ? (
               <button onClick={() => { logout(); setMobileMenuOpen(false); }}
-                className="text-sm font-medium opacity-50" style={{ color: CREAM }}>
+                className="text-[13px] font-medium opacity-40 flex items-center gap-2"
+                style={{ color: CREAM }}>
                 Sign Out
               </button>
             ) : (
               <button onClick={() => { window.location.href = LOGIN_URL; }}
-                className="w-full text-sm font-semibold uppercase tracking-wider rounded-full h-14"
+                className="w-full text-[13px] font-bold uppercase tracking-widest rounded-2xl h-14 transition-opacity active:opacity-80"
                 style={{ backgroundColor: GOLD, color: TEAL }}>
-                Login
+                Staff Login
               </button>
             )}
           </div>
