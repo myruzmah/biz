@@ -237,7 +237,7 @@ function OverviewSection({ leadsList, affiliatesList }: { leadsList: LeadRow[]; 
       <div className="flex items-center gap-3 rounded-xl px-4 py-3 border" style={{ backgroundColor: `${GOLD}10`, borderColor: `${GOLD}30` }}>
         <AlertCircle size={15} style={{ color: GOLD }} />
         <p className="text-sm font-normal" style={{ color: DARK }}>{handoffReady > 0 ? `${handoffReady} lead${handoffReady > 1 ? "s" : ""} ready for CSO handoff — within 24h SLA` : "No leads pending handoff right now"}</p>
-        <Button size="sm" variant="ghost" className="ml-auto text-xs" style={{ color: GOLD }} onClick={() => toast("Leads handed off to CSO")}>
+        <Button size="sm" variant="ghost" className="ml-auto text-xs" style={{ color: GOLD }} onClick={() => toast.success("Leads handed off to CSO. They will follow up within 24 hours.")}>
           Handoff Now
         </Button>
       </div>
@@ -373,7 +373,7 @@ function LeadTrackerSection({ leadsList }: { leadsList: LeadRow[] }) {
             <Button size="sm" style={{ backgroundColor: DARK, color: GOLD }} onClick={() => { toast.success("Lead logged"); setShowForm(false); }}>
               Log Lead
             </Button>
-            <Button size="sm" style={{ backgroundColor: GREEN, color: "white" }} disabled={score < 4} onClick={() => { toast.success("Lead handed off to CSO"); setShowForm(false); }}>
+            <Button size="sm" style={{ backgroundColor: GREEN, color: "white" }} disabled={score < 4} onClick={() => { toast.success("Lead handed off to CSO. They will follow up within 24 hours."); setShowForm(false); }}>
               Handoff to CSO {score < 4 && "(score ≥4 required)"}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
@@ -424,7 +424,7 @@ function LeadTrackerSection({ leadsList }: { leadsList: LeadRow[] }) {
                     </td>
                     <td className="p-4 text-right">
                       {lead.status === "handoff_ready" && (
-                        <Button size="sm" variant="ghost" className="text-xs" style={{ color: GREEN }} onClick={() => toast.success(`${lead.name} handed off to CSO`)}>
+                        <Button size="sm" variant="ghost" className="text-xs" style={{ color: GREEN }} onClick={() => toast.success(`${lead.name} handed off to CSO. They will follow up within 24 hours.`)}>
                           Handoff →
                         </Button>
                       )}

@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import PageMeta from "@/components/PageMeta";
 import { ArrowLeft, ArrowRight, GraduationCap, Target, Users, Lightbulb } from "lucide-react";
 
-const GOLD = "#DAA520";
+const GOLD = "#C9A97E";
 const CREAM = "#FFF9E6";
 
 export default function SkillsCEOPage() {

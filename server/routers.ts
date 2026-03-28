@@ -453,7 +453,7 @@ export const appRouter = router({
 
   // ─── Public Tracking ──────────────────────────────────────────────────────
   tracking: router({
-    lookup: publicProcedure
+    lookup: rateLimitedProcedure
       .input(z.object({
         ref: z.string().min(1),
         phone: z.string().optional(),

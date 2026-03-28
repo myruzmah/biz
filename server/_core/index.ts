@@ -66,34 +66,6 @@ async function startServer() {
     }
   });
 
-  // ─── Dev Login — no password, dev-only, bypasses DB ─────────────────────
-  app.post("/api/dev-login", async (req, res) => {
-    if (process.env.NODE_ENV === "production") {
-      return res.status(403).json({ error: "Not available in production." });
-    }
-    try {
-      const { role } = req.body ?? {};
-      const DEV_PROFILES: Record<string, { name: string; openId: string; dashboard: string }> = {
-        founder:          { name: "Muhammad Hamzury", openId: "dev__founder__1",          dashboard: "/founder/dashboard" },
-        ceo:              { name: "Idris Ibrahim",    openId: "dev__ceo__1",              dashboard: "/hub/ceo" },
-        cso:              { name: "Tabitha",          openId: "dev__cso__1",              dashboard: "/hub/cso" },
-        finance:          { name: "Abubakar",         openId: "dev__finance__1",          dashboard: "/hub/finance" },
-        hr:               { name: "Khadija",          openId: "dev__hr__1",               dashboard: "/hub/hr" },
-        bizdev:           { name: "Faree",            openId: "dev__bizdev__1",           dashboard: "/hub/bizdev" },
-        department_staff: { name: "Abdullahi Musa",   openId: "dev__department_staff__1", dashboard: "/bizdoc/dashboard" },
-        media:            { name: "Hikma",            openId: "dev__media__1",            dashboard: "/media/dashboard" },
-      };
-      const profile = DEV_PROFILES[role];
-      if (!profile) return res.status(400).json({ error: "Unknown role." });
-      const token = await sdk.createSessionToken(profile.openId, { name: profile.name });
-      const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, token, { ...cookieOptions, sameSite: "lax", maxAge: 8 * 60 * 60 * 1000 });
-      res.json({ success: true, name: profile.name, role, dashboard: profile.dashboard });
-    } catch (err) {
-      res.status(500).json({ error: String(err) });
-    }
-  });
-
   // ─── Founder Login — password-gated, env-controlled ─────────────────────
   app.post("/api/founder-login", async (req, res) => {
     try {
@@ -313,7 +285,13 @@ async function startServer() {
   // Shared bearer token guard for all /api/events/* endpoints
   const EVENTS_TOKEN = process.env.CHAT_EVENTS_TOKEN ?? "";
   function requireEventsToken(req: express.Request, res: express.Response, next: express.NextFunction) {
-    if (!EVENTS_TOKEN) { next(); return; } // token not set → open (dev/test)
+    if (!EVENTS_TOKEN) {
+      if (process.env.NODE_ENV === "production") {
+        res.status(403).json({ error: "Webhook authentication required" });
+        return;
+      }
+      next(); return; // token not set → open (dev/test)
+    }
     const auth = req.headers.authorization ?? "";
     if (auth !== `Bearer ${EVENTS_TOKEN}`) {
       res.status(401).json({ error: "Unauthorized" });

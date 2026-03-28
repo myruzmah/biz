@@ -34,7 +34,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const GOLD = "#6B7280";
+const GOLD = "#C9A97E";
 const PAGE_SIZE = 20;
 
 type AppStatus = "submitted" | "under_review" | "accepted" | "waitlisted" | "rejected";

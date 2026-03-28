@@ -15,7 +15,7 @@ export const BRAND = {
   federal: "#0A1F1C",    // Luxury Dark Green — Main site, CSO, CEO, Finance, HR, Founder
   bizdoc: "#1B4D3E",     // Deep Green — BizDoc Consult
   systemise: "#1E3A5F",  // Navy Blue — Systemise
-  skills: "#DAA520",     // Gold Yellow — HAMZURY Skills
+  skills: "#1B2A4A",     // Deep Navy — HAMZURY Skills
   ridi: "#C9A97E",       // Gold — RIDI
 } as const;
 

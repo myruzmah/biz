@@ -219,7 +219,7 @@ function FloatingChat() {
   const [location] = useLocation();
 
   // Don't show on dashboards, login, admin, or affiliate pages
-  const hiddenPaths = ["/hub/", "/bizdoc/dashboard", "/skills/admin", "/founder/dashboard", "/ridi/dashboard", "/media/dashboard", "/affiliate/dashboard", "/login", "/dev-login", "/client/dashboard"];
+  const hiddenPaths = ["/hub/", "/bizdoc/dashboard", "/skills/admin", "/founder/dashboard", "/ridi/dashboard", "/media/dashboard", "/affiliate/dashboard", "/login", "/client/dashboard"];
   if (hiddenPaths.some(p => location.startsWith(p))) return null;
 
   // Detect department from route

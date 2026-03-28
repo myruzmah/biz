@@ -47,7 +47,7 @@ const TEAM: StaffMember[] = [
     role: "CEO, HAMZURY Skills",
     dept: "HAMZURY Skills",
     initials: "PL",
-    color: "#8B6914",
+    color: "#1B2A4A",
     bio: "Designs and delivers HAMZURY's education programs. Oversees cohort curriculum, trainer quality, and learner outcomes.",
   },
   {

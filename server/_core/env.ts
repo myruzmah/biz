@@ -1,5 +1,10 @@
 const DEV_FALLBACK_SECRET = "hamzury-dev-fallback-secret-do-not-use-in-production-2026";
 
+// Fail fast in production if JWT_SECRET is missing
+if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+  throw new Error("FATAL: JWT_SECRET must be set in production");
+}
+
 export const ENV = {
   appId: process.env.VITE_APP_ID ?? "hamzury-dev",
   cookieSecret: process.env.JWT_SECRET || (process.env.NODE_ENV !== "production" ? DEV_FALLBACK_SECRET : ""),

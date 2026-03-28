@@ -455,12 +455,17 @@ export default function PricingPage() {
       </section>
 
       {/* FOOTER */}
-      <footer className="py-8 px-6 md:px-12 border-t flex justify-between items-center" style={{ borderColor: `${TEAL}10` }}>
-        <Link href="/" className="text-[12px] font-bold tracking-wider hover:opacity-60 transition-opacity" style={{ color: TEAL }}>
-          HAMZURY
-        </Link>
-        <p className="text-[11px] opacity-40" style={{ color: DARK }}>
-          All prices are starting rates. Final quote confirmed before work begins.
+      <footer className="py-8 px-6 md:px-12 border-t" style={{ borderColor: `${TEAL}10` }}>
+        <div className="flex justify-between items-center">
+          <Link href="/" className="text-[12px] font-bold tracking-wider hover:opacity-60 transition-opacity" style={{ color: TEAL }}>
+            HAMZURY
+          </Link>
+          <p className="text-[11px] opacity-40" style={{ color: DARK }}>
+            All prices are starting rates. Final quote confirmed before work begins.
+          </p>
+        </div>
+        <p className="text-[12px] font-light italic mt-3" style={{ color: `${DARK}50` }}>
+          "Structure before speed. That is how we build." — Muhammad Hamzury, Founder
         </p>
       </footer>
     </div>

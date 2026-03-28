@@ -279,19 +279,24 @@ export default function ConsultantPage() {
 
       {/* FOOTER */}
       <footer
-        className="py-8 px-6 md:px-12 border-t flex justify-between items-center"
+        className="py-8 px-6 md:px-12 border-t"
         style={{ borderColor: `${TEAL}10` }}
       >
-        <Link href="/" className="text-[12px] font-bold tracking-wider hover:opacity-60 transition-opacity" style={{ color: TEAL }}>
-          HAMZURY
-        </Link>
-        <Link
-          href="/privacy"
-          className="text-[12px] opacity-40 hover:opacity-70 transition-opacity"
-          style={{ color: DARK }}
-        >
-          Privacy Policy
-        </Link>
+        <div className="flex justify-between items-center">
+          <Link href="/" className="text-[12px] font-bold tracking-wider hover:opacity-60 transition-opacity" style={{ color: TEAL }}>
+            HAMZURY
+          </Link>
+          <Link
+            href="/privacy"
+            className="text-[12px] opacity-40 hover:opacity-70 transition-opacity"
+            style={{ color: DARK }}
+          >
+            Privacy Policy
+          </Link>
+        </div>
+        <p className="text-[12px] font-light italic mt-3" style={{ color: `${CREAM}80` }}>
+          "Structure before speed. That is how we build." — Muhammad Hamzury, Founder
+        </p>
       </footer>
     </div>
   );

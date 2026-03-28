@@ -545,13 +545,18 @@ export default function FounderPage() {
         style={{ backgroundColor: WHITE, borderColor: `${TEAL}10`, color: `${DARK}99` }}
       >
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          <Link
-            href="/"
-            className="font-medium tracking-widest uppercase transition-opacity hover:opacity-60"
-            style={{ color: TEAL }}
-          >
-            HAMZURY
-          </Link>
+          <div className="flex flex-col items-center sm:items-start gap-1">
+            <Link
+              href="/"
+              className="font-medium tracking-widest uppercase transition-opacity hover:opacity-60"
+              style={{ color: TEAL }}
+            >
+              HAMZURY
+            </Link>
+            <p className="text-[12px] font-light italic" style={{ color: `${TEAL}60` }}>
+              "Structure before speed. That is how we build." — Muhammad Hamzury, Founder
+            </p>
+          </div>
           <div className="flex gap-6 text-xs">
             {[
               { href: "/bizdoc",    label: "BizDoc"     },
