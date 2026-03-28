@@ -74,19 +74,19 @@ const PERSONA: Record<Department, { name: string; title: string; greeting: strin
   general: {
     name: "Evelyn Adam",
     title: "HAMZURY Advisor",
-    greeting: "Welcome to HAMZURY. We help businesses get positioned, protected, and profitable. How can I help you today?",
+    greeting: "Welcome to HAMZURY. How can I help you today?",
     color: TEAL,
   },
   bizdoc: {
     name: "Hauwa Aristotle",
     title: "BizDoc Advisor",
-    greeting: "Welcome to BizDoc. We handle registration, compliance, and legal paperwork so you focus on growth. How can I help?",
+    greeting: "Welcome to BizDoc. How can I help you?",
     color: "#1B4D3E",
   },
   systemise: {
     name: "Fatima Haitham",
     title: "Systemise Advisor",
-    greeting: "Welcome to Systemise. We build brands and digital systems that work while you sleep. How can I help?",
+    greeting: "Welcome to Systemise. How can I help you?",
     color: "#1E3A5F",
   },
   skills: {
@@ -327,14 +327,15 @@ export default function ChatWidget({ department = "general", open: externalOpen,
   const showInitialPaths = () => {
     addBotMsg(persona.greeting);
     setTimeout(() => {
+      addBotMsg("Tell us a little about what you are looking for.");
       addBotOptions([
-        { label: "Returning client", value: "TRACK", sub: "Check your file or continue" },
-        { label: "I know what I need", value: "DIRECT", sub: "Quick service selection" },
-        { label: "Help me figure it out", value: "GUIDANCE", sub: "We will guide you" },
-        { label: "Schedule a call", value: "SCHEDULE", sub: "Speak with our team" },
+        { label: "Returning client", value: "TRACK" },
+        { label: "I know what I need", value: "DIRECT" },
+        { label: "Help me figure it out", value: "GUIDANCE" },
+        { label: "Schedule a call", value: "SCHEDULE" },
       ]);
       setChatState("PATHS");
-    }, 600);
+    }, 400);
   };
 
   const addBotMsg = (text: string) =>
@@ -660,10 +661,10 @@ export default function ChatWidget({ department = "general", open: externalOpen,
       addBotMsg("How else can I help you?");
       setTimeout(() => {
         addBotOptions([
-          { label: "Returning client", value: "TRACK", sub: "Check your file or continue" },
-          { label: "I know what I need", value: "DIRECT", sub: "Quick service selection" },
-          { label: "Help me figure it out", value: "GUIDANCE", sub: "We will guide you" },
-          { label: "Schedule a call", value: "SCHEDULE", sub: "Speak with our team" },
+          { label: "Returning client", value: "TRACK" },
+          { label: "I know what I need", value: "DIRECT" },
+          { label: "Help me figure it out", value: "GUIDANCE" },
+          { label: "Schedule a call", value: "SCHEDULE" },
         ]);
       }, 300);
       setChatState("PATHS");
@@ -700,38 +701,27 @@ export default function ChatWidget({ department = "general", open: externalOpen,
       className={
         isControlled
           ? "w-full h-full flex flex-col overflow-hidden"
-          : "fixed z-50 flex flex-col overflow-hidden shadow-2xl border border-[#0A1F1C]/10 bottom-4 right-4 left-4 rounded-2xl max-h-[65vh] md:bottom-4 md:right-4 md:left-auto md:w-[420px] md:rounded-2xl md:max-h-[600px]"
+          : "fixed z-50 flex flex-col overflow-hidden shadow-2xl rounded-2xl border border-[#0A1F1C]/10 inset-x-3 bottom-16 top-auto md:inset-auto md:bottom-4 md:right-4 md:w-[400px]"
       }
-      style={isControlled ? {} : { backgroundColor: "white", transform: mounted ? "translateY(0)" : "translateY(100%)", transition: "transform 0.3s ease-out" }}
+      style={isControlled ? {} : { backgroundColor: "white", maxHeight: "min(520px, 70vh)", transform: mounted ? "scale(1) opacity(1)" : "scale(0.95) opacity(0)", opacity: mounted ? 1 : 0, transition: "transform 0.2s ease-out, opacity 0.2s ease-out" }}
     >
-      {/* Header */}
+      {/* Header — AWS style: compact, name + badge left, minimize right */}
       <div className="shrink-0 relative" style={{ backgroundColor: persona.color }}>
-        <div className="px-4 pt-3 pb-2 flex justify-between items-start">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setMenuOpen(v => !v)} className="text-white/60 hover:text-white transition-opacity p-0.5 mt-0.5">
-              <MoreVertical size={18} />
+        <div className="px-4 py-3 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setMenuOpen(v => !v)} className="text-white/50 hover:text-white p-0.5">
+              <MoreVertical size={16} />
             </button>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-[14px] text-white">{persona.name}</h3>
-                <span className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center" title="Verified">
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-[11px] text-white/70">Online now</span>
-              </div>
-            </div>
+            <h3 className="font-semibold text-[14px] text-white">{persona.name}</h3>
+            <span className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center" title="Verified">
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
           </div>
-          <button onClick={close} className="text-white/50 hover:text-white transition-opacity p-1">
-            <X size={18} />
+          <button onClick={close} className="text-white/50 hover:text-white p-1" title="Minimize">
+            <span className="text-lg font-light">—</span>
           </button>
         </div>
-        {/* Rotating slogan */}
-        <p className="px-4 pb-2.5 text-[11px] text-white/50 font-light italic transition-opacity duration-500">
-          {SLOGANS[sloganIdx]}
-        </p>
 
         {/* Three-dot menu dropdown */}
         {menuOpen && (
@@ -764,56 +754,50 @@ export default function ChatWidget({ department = "general", open: externalOpen,
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3" style={{ backgroundColor: "#FAFAFA" }}>
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
-              {msg.text && (
-                <div className={msg.sender === "bot" ? "max-w-[85%]" : "max-w-[85%]"}>
-                  <div
-                    className={`p-3.5 text-[13px] leading-relaxed ${
-                      msg.sender === "user" ? "rounded-2xl rounded-tr-sm" : "rounded-2xl rounded-tl-sm border border-[#0A1F1C]/5"
-                    }`}
-                    style={{
-                      backgroundColor: msg.sender === "user" ? persona.color : "white",
-                      color: msg.sender === "user" ? "#F8F5F0" : "#2C2C2C",
-                    }}
-                    dangerouslySetInnerHTML={{ __html: formatText(msg.text) }}
-                  />
-                  {msg.sender === "bot" && !msg.options && (
-                    <button
-                      onClick={() => toast.success("Thanks for the feedback")}
-                      className="mt-1 p-1 rounded-full hover:bg-black/5 transition-colors opacity-40 hover:opacity-100"
-                    >
-                      <ThumbsUp size={12} />
-                    </button>
-                  )}
-                </div>
-              )}
-              {msg.options && (
-                <div className="flex flex-col gap-2 w-full mt-1">
-                  {msg.options.map((opt, j) => (
-                    <button
-                      key={j}
-                      onClick={() => handleOptionClick(opt.value, opt.label)}
-                      className="text-left p-3 text-[13px] bg-white border border-[#0A1F1C]/8 rounded-xl hover:border-[#C9A97E] hover:bg-[#F8F5F0] transition-all group"
-                    >
-                      <span className="font-medium" style={{ color: TEAL }}>{opt.label}</span>
-                      {opt.sub && <span className="block text-[11px] mt-0.5 opacity-50">{opt.sub}</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-          {aiLoading && (
-            <div className="flex justify-start">
-              <div className="p-3 rounded-2xl rounded-tl-sm bg-white border border-[#0A1F1C]/5">
-                <Loader2 size={16} className="animate-spin opacity-40" />
+      <div className="flex-1 overflow-y-auto p-3 space-y-3" style={{ backgroundColor: "#FAFAFA" }}>
+        {messages.map((msg, i) => (
+          <div key={i}>
+            {msg.text && (
+              <div className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`max-w-[80%] p-3 text-[13px] leading-relaxed ${
+                    msg.sender === "user"
+                      ? "rounded-2xl rounded-tr-sm"
+                      : "rounded-2xl rounded-tl-sm border border-[#0A1F1C]/5"
+                  }`}
+                  style={{
+                    backgroundColor: msg.sender === "user" ? persona.color : "white",
+                    color: msg.sender === "user" ? "#F8F5F0" : "#2C2C2C",
+                  }}
+                  dangerouslySetInnerHTML={{ __html: formatText(msg.text) }}
+                />
               </div>
+            )}
+            {msg.options && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {msg.options.map((opt, j) => (
+                  <button
+                    key={j}
+                    onClick={() => handleOptionClick(opt.value, opt.label)}
+                    className="px-4 py-2 text-[13px] border rounded-full hover:border-[#C9A97E] hover:bg-[#F8F5F0] transition-all"
+                    style={{ borderColor: `${TEAL}20`, color: TEAL }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+        {aiLoading && (
+          <div className="flex justify-start">
+            <div className="p-3 rounded-2xl rounded-tl-sm bg-white border border-[#0A1F1C]/5">
+              <Loader2 size={16} className="animate-spin opacity-40" />
             </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
 
       {/* Input */}
       {!inputDisabled && (
@@ -825,7 +809,7 @@ export default function ChatWidget({ department = "general", open: externalOpen,
               value={input}
               onChange={e => { setInput(e.target.value); if (inputError) setInputError(""); }}
               onKeyDown={e => e.key === "Enter" && handleSend()}
-              placeholder={chatState === "AI_CHAT" ? "Ask me anything..." : "Type your response..."}
+              placeholder={aiLoading ? "Responding..." : "Ask a question"}
               className="flex-1 border rounded-full px-4 py-2.5 text-[13px] outline-none transition-colors"
               style={{ backgroundColor: CREAM, borderColor: inputError ? "#EF4444" : "rgba(10,31,28,0.08)" }}
             />
