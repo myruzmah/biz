@@ -60,27 +60,27 @@ const CREAM = "#F8F5F0";
 
 const PERSONA: Record<Department, { name: string; title: string; greeting: string; color: string }> = {
   general: {
-    name: "HAMZURY",
-    title: "Business Advisor",
-    greeting: "We position businesses for growth. Many come to us overwhelmed by compliance, broken systems, and missed opportunities. We take time to understand you first, so we save you time, money, and stress.",
+    name: "Evelyn Adam",
+    title: "HAMZURY Advisor",
+    greeting: "Welcome to HAMZURY. We help businesses get positioned, protected, and profitable. How can I help you today?",
     color: TEAL,
   },
   bizdoc: {
-    name: "Amara",
+    name: "Hauwa Aristotle",
     title: "BizDoc Advisor",
-    greeting: "Every business deserves legal protection. Most owners we meet are exposed without knowing it. We handle the paperwork so you focus on growth.",
+    greeting: "Welcome to BizDoc. We handle registration, compliance, and legal paperwork so you focus on growth. How can I help?",
     color: "#1B4D3E",
   },
   systemise: {
-    name: "Nova",
+    name: "Fatima Haitham",
     title: "Systemise Advisor",
-    greeting: "Your brand deserves systems that work while you sleep. Most businesses we meet are running on chaos. We build the infrastructure that changes that.",
-    color: TEAL,
+    greeting: "Welcome to Systemise. We build brands and digital systems that work while you sleep. How can I help?",
+    color: "#1E3A5F",
   },
   skills: {
-    name: "Zara",
+    name: "Maryam Jaffar",
     title: "Skills Advisor",
-    greeting: "The right skills change careers. We train people who want real market ability, not just certificates. What are you looking to learn?",
+    greeting: "Welcome to Skills. We train people who want real market ability, not just certificates. What are you looking to learn?",
     color: "#1B2A4A",
   },
 };
@@ -172,12 +172,6 @@ export default function ChatWidget({ department = "general", open: externalOpen,
   // Menu state
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Disclaimer state
-  const [disclaimerAccepted, setDisclaimerAccepted] = useState(() => {
-    try { return localStorage.getItem("hamzury-chat-disclaimer") === "1"; } catch { return false; }
-  });
-  const [showDisclaimer, setShowDisclaimer] = useState(false);
-
   const persona = PERSONA[department];
 
   const submitLead = trpc.leads.submit.useMutation({
@@ -242,24 +236,13 @@ export default function ChatWidget({ department = "general", open: externalOpen,
     setAiMessages([]);
   }, []);
 
-  // Show disclaimer on first open, then initial paths
+  // Show initial paths immediately on open
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      if (!disclaimerAccepted) {
-        setShowDisclaimer(true);
-      } else {
-        showInitialPaths();
-      }
+      showInitialPaths();
     }
-    if (!isOpen) { reset(); setShowDisclaimer(false); }
+    if (!isOpen) { reset(); }
   }, [isOpen]);
-
-  const acceptDisclaimer = () => {
-    setDisclaimerAccepted(true);
-    setShowDisclaimer(false);
-    try { localStorage.setItem("hamzury-chat-disclaimer", "1"); } catch {}
-    showInitialPaths();
-  };
 
   const showInitialPaths = () => {
     addBotMsg(persona.greeting);
@@ -571,7 +554,7 @@ export default function ChatWidget({ department = "general", open: externalOpen,
       className={
         isControlled
           ? "w-full h-full flex flex-col overflow-hidden"
-          : "fixed z-50 flex flex-col overflow-hidden shadow-2xl border border-[#0A1F1C]/10 bottom-3 left-3 right-3 rounded-2xl max-h-[60vh] md:bottom-6 md:right-6 md:left-auto md:w-[400px] md:rounded-2xl md:max-h-[520px]"
+          : "fixed z-50 flex flex-col overflow-hidden shadow-2xl border border-[#0A1F1C]/10 bottom-0 left-0 right-0 rounded-t-2xl max-h-[80vh] md:bottom-4 md:right-4 md:left-auto md:w-[420px] md:rounded-2xl md:max-h-[600px]"
       }
       style={isControlled ? {} : { backgroundColor: "white", transform: mounted ? "translateY(0)" : "translateY(100%)", transition: "transform 0.3s ease-out" }}
     >
@@ -620,30 +603,8 @@ export default function ChatWidget({ department = "general", open: externalOpen,
         )}
       </div>
 
-      {/* Disclaimer overlay */}
-      {showDisclaimer && (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center" style={{ backgroundColor: "#FAFAFA" }}>
-          <h4 className="font-semibold text-[15px] mb-3" style={{ color: TEAL }}>Disclaimer</h4>
-          <p className="text-[13px] leading-relaxed mb-5" style={{ color: "#555" }}>
-            By chatting, you agree to our{" "}
-            <a href="/terms" target="_blank" style={{ color: GOLD, textDecoration: "underline" }}>Terms of Service</a>
-            {" "}and{" "}
-            <a href="/privacy" target="_blank" style={{ color: GOLD, textDecoration: "underline" }}>Privacy Policy</a>.
-            HAMZURY handles your information as described in our Privacy Notice. Inputs you provide through this chat are used to assist you and improve our service.
-          </p>
-          <button
-            onClick={acceptDisclaimer}
-            className="px-6 py-2.5 rounded-full text-[13px] font-medium text-white transition-transform hover:scale-105"
-            style={{ backgroundColor: persona.color }}
-          >
-            I understand
-          </button>
-        </div>
-      )}
-
       {/* Messages */}
-      {!showDisclaimer && (
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3" style={{ backgroundColor: "#FAFAFA" }}>
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3" style={{ backgroundColor: "#FAFAFA" }}>
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
               {msg.text && (
@@ -693,10 +654,9 @@ export default function ChatWidget({ department = "general", open: externalOpen,
           )}
           <div ref={messagesEndRef} />
         </div>
-      )}
 
       {/* Input */}
-      {!inputDisabled && !showDisclaimer && (
+      {!inputDisabled && (
         <div className="px-3 pt-2 pb-3 bg-white border-t border-[#0A1F1C]/5 shrink-0">
           {inputError && <p className="text-[11px] mb-1.5 px-1 text-red-500">{inputError}</p>}
           <div className="flex gap-2">
@@ -719,8 +679,8 @@ export default function ChatWidget({ department = "general", open: externalOpen,
             </button>
           </div>
           <p className="text-center mt-1.5 text-[10px] opacity-40">
-            By chatting, you agree to our{" "}
-            <button onClick={() => setShowDisclaimer(true)} className="underline">disclaimer</button>.
+            By continuing, you agree to our{" "}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline">terms</a>.
           </p>
         </div>
       )}

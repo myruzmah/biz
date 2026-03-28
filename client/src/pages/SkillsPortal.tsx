@@ -919,6 +919,9 @@ export default function SkillsPortal() {
         <div className="max-w-7xl mx-auto px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
           <span className="font-normal tracking-widest text-sm uppercase" style={{ color: BG }}>Hamzury Skills</span>
           <div className="flex items-center gap-6 text-xs flex-wrap justify-center sm:justify-end" style={{ color: `${BG}55` }}>
+            <p className="text-[12px] font-light italic mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>
+              "The right skills change everything." — Muhammad Hamzury, Founder
+            </p>
             <span>© 2026 Hamzury Skills</span>
             <a href="/login" className="hover:opacity-80 transition-opacity" style={{ color: `${BG}55` }}>Staff</a>
             <a href="/pricing" className="hover:opacity-80 transition-opacity" style={{ color: `${BG}55` }}>Pricing</a>

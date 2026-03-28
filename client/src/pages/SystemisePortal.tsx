@@ -14,7 +14,7 @@ import MotivationalQuoteBar from "@/components/MotivationalQuoteBar";
    SYSTEMIZE PORTAL. /systemise
    ═══════════════════════════════════════════════════════════════════════════ */
 
-const G  = "#0A1F1C";   // Dark teal primary
+const G  = "#1E3A5F";   // Dark navy blue primary
 const Au = "#C9A97E";   // Gold accent (5% usage)
 const Cr = "#F8F5F0";   // Cream background
 const W  = "#FFFFFF";
@@ -1353,6 +1353,9 @@ export default function SystemizePortal() {
       {/* ─── FOOTER ─── */}
       <footer className="py-8 px-5 border-t" style={{ borderColor: `${G}10`, backgroundColor: W }}>
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-[12px] opacity-50" style={{ color: G }}>
+          <p className="text-[12px] font-light italic mb-3" style={{ color: `${G}80` }}>
+            "Structure before speed. That is how we build." — Muhammad Hamzury, Founder
+          </p>
           <p>© {new Date().getFullYear()} HAMZURY Systemize. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <Link href="/pricing"><span className="hover:opacity-100 transition-opacity cursor-pointer">Pricing</span></Link>
@@ -1366,7 +1369,7 @@ export default function SystemizePortal() {
       </footer>
 
       {/* ─── MOBILE BOTTOM BAR ─── */}
-      <MotivationalQuoteBar color="#0A1F1C" />
+      <MotivationalQuoteBar color="#1E3A5F" />
       <div className="md:hidden h-10" />
     </div>
   );

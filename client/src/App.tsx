@@ -37,6 +37,7 @@ import RIDIPage from "./pages/RIDIPage";
 import RIDIDashboard from "./pages/RIDIDashboard";
 import MediaDashboard from "./pages/MediaDashboard";
 import TeamPage from "./pages/TeamPage";
+import MetFixPage from "./pages/MetFixPage";
 import CookieBanner from "./components/CookieBanner";
 import ChatWidget from "./components/ChatWidget";
 import { trpc } from "./lib/trpc";
@@ -193,6 +194,7 @@ function Router() {
       <Route path={"/terms"} component={TermsOfService} />
       <Route path={"/consultant"} component={ConsultantPage} />
       <Route path={"/pricing"} component={PricingPage} />
+      <Route path={"/metfix"} component={MetFixPage} />
       <Route path={"/login"} component={LoginPage} />
 
       {/* Fallback */}

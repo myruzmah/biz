@@ -237,6 +237,8 @@ export default function Home() {
                   { label: "BizDoc Consult",  href: "/bizdoc" },
                   { label: "Systemise",        href: "/systemise" },
                   { label: "Hamzury Skills",   href: "/skills" },
+                  { label: "RIDI Initiative",  href: "/ridi" },
+                  { label: "MetFix Hardware",  href: "/metfix" },
                 ].map(d => (
                   <Link key={d.href} href={d.href}
                     onClick={() => setMobileMenuOpen(false)}
@@ -665,8 +667,8 @@ export default function Home() {
             {[
               { name: "Barrister Abdullahi Musa", role: "Head of Compliance", dept: "BizDoc Consult", href: "/consultant", initials: "AM", color: "#1B4D3E" },
               { name: "Idris Ibrahim",             role: "Chief Executive Officer", dept: "HAMZURY",   href: "/team",       initials: "II", color: "#0A1F1C" },
-              { name: "Systems Lead",              role: "CTO & Architect",   dept: "Systemize",       href: "/systemise/cto", initials: "SL", color: "#0A1F1C" },
-              { name: "Skills Lead",               role: "CEO, Skills",       dept: "HAMZURY Skills",  href: "/skills/ceo", initials: "SK", color: "#1B2A4A" },
+              { name: "Idris Ibrahim",             role: "Systemise Lead",    dept: "Systemize",       href: "/systemise/cto", initials: "II", color: "#0A1F1C" },
+              { name: "Abdulmalik Musa",           role: "Skills Lead",       dept: "HAMZURY Skills",  href: "/skills/ceo", initials: "AM", color: "#1B2A4A" },
             ].map(member => (
               <Link key={member.href} href={member.href}>
                 {/* Mobile: compact row */}
@@ -736,6 +738,11 @@ export default function Home() {
           >
             Staff Login →
           </button>
+        </div>
+        <div className="max-w-7xl mx-auto text-center mt-6">
+          <p className="text-[12px] font-light italic mb-4" style={{ color: `${CREAM}80` }}>
+            "Structure before speed. That is how we build." — Muhammad Hamzury, Founder
+          </p>
         </div>
       </footer>
 

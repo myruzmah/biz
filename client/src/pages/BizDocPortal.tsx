@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import PageMeta from "@/components/PageMeta";
-import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, Play, X, Menu } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, X, Menu } from "lucide-react";
 import MotivationalQuoteBar from "@/components/MotivationalQuoteBar";
 import { trpc } from "@/lib/trpc";
 
@@ -13,92 +13,117 @@ const Milk = "#FAFAF8";
 
 // ── PILLARS (pain-point first) ────────────────────────────────────────────────
 type PillarDef = {
-  num: string; title: string; badge: string; sub: string;
-  forWhom: string; pitch: string; items: string[];
-  video?: string; price?: string; split?: string[];
+  num: string; tag: string; title: string; sub: string;
+  pitch: string; forWhom: string; services: string[];
+  highlight: string;
 };
 
 const PILLARS: PillarDef[] = [
   {
-    num: "00",
-    badge: "FOREIGN REGISTRATION",
-    title: "I'm a foreign investor. I need to operate legally in Nigeria",
-    sub: "Foreign Company Registration & Expatriate Compliance",
-    forWhom: "Foreign nationals, diaspora investors, and international companies.",
-    pitch: "One missed document can mean deportation or asset seizure. We handle every foreign registration end to end.",
-    items: [
-      "CAC Foreign Company Registration (CAMA 2020. Section 54)",
-      "Business Permit. Federal Ministry of Interior",
-      "Expatriate Quota (EQ) Application & Processing",
-      "CERPAC. Combined Expatriate Residence Permit & Aliens Card",
-      "Apostille & Document Authentication (home country docs)",
-      "SCUML Registration (mandatory for foreign-owned businesses)",
-      "Notarisation & Legalisation of Foreign Documents",
-    ],
-  },
-  {
     num: "01",
-    badge: "REGISTRATION",
-    title: "My business isn't registered. I keep missing opportunities",
-    sub: "CAC Registration & Modifications",
-    forWhom: "Business owners who need a corporate account, contracts, or tenders.",
-    pitch: "Without CAC, your business doesn't legally exist. We handle registration through restructuring.",
-    items: ["Business Name Registration", "Private Limited Company (RC)", "Annual Returns Filing", "Business Restructuring (BN → Ltd)", "Director & Shareholder Amendments", "Company Restoration", "Free corporate bank intro letter"],
+    tag: "REGISTRATION",
+    title: "My business isn't registered — or I'm a foreign investor trying to operate in Nigeria",
+    sub: "CAC Registration, Modifications & Foreign Company Setup",
+    pitch: "Without CAC, your business doesn't legally exist. Whether you're local or foreign, we handle every registration from entity formation to expatriate compliance.",
+    forWhom: "Startups, SMEs, foreign investors, diaspora entrepreneurs, and anyone who needs a corporate account, contracts, or tenders.",
+    services: [
+      "Business Name Registration",
+      "Private Limited Company (RC)",
+      "CAC Foreign Company Registration (CAMA 2020, Section 54)",
+      "Business Permit — Federal Ministry of Interior",
+      "Expatriate Quota (EQ) Application & Processing",
+      "CERPAC — Combined Expatriate Residence Permit & Aliens Card",
+      "Apostille & Document Authentication",
+      "SCUML Registration",
+      "Director & Shareholder Amendments",
+      "Business Restructuring (BN → Ltd, Name Change, Address Change)",
+      "Company Restoration",
+      "Annual Returns Filing & Back-Filing",
+      "Free corporate bank intro letter",
+    ],
+    highlight: "Local or foreign — one team handles your entire registration.",
   },
   {
     num: "02",
-    badge: "COMPLIANCE",
-    title: "I don't have the right licenses. I can't operate legally",
-    sub: "Sector Licences & Permits",
-    forWhom: "Regulated sectors: food, oil & gas, healthcare, fintech, construction, export.",
-    pitch: "One inspection from shutdown. We identify, file, and track every licence your sector requires.",
-    items: ["NAFDAC Product Registration", "DPR / NMDPRA Petroleum Licence", "CBN / Fintech Approval", "COREN / ARCON Professional Licence", "NEPC Export Licence", "NITDA Accreditation", "State-Level Permits & Renewals"],
+    tag: "FULL SETUP",
+    title: "I want everything handled — from registration to operations",
+    sub: "Complete Business Processing — Docs, Accounts, Operations",
+    pitch: "You bring the idea. We deliver a fully registered, tax-compliant, legally protected, operationally ready business. End to end.",
+    forWhom: "New founders, relocating businesses, and anyone who wants the full package without chasing multiple vendors.",
+    services: [
+      "Full CAC Registration (BN or Ltd)",
+      "TIN + VAT + PAYE Setup",
+      "Corporate Bank Account Intro",
+      "All Legal Documents (Agreements, NDAs, Employment Contracts)",
+      "Sector Licence Identification & Filing",
+      "Brand Registration & Trademark Filing",
+      "Operational SOP Framework",
+      "Monthly Compliance Calendar Setup",
+      "Dedicated Account Manager for 90 Days",
+    ],
+    highlight: "One engagement. Every layer. Fully handled.",
   },
   {
     num: "03",
-    badge: "TAX",
-    title: "FIRS is chasing me. my tax is a mess",
-    sub: "Tax & FIRS Compliance",
-    forWhom: "Behind on filings, received a FIRS notice, or need a TCC.",
-    pitch: "FIRS notices aren't warnings. They're enforcement. We handle TIN, returns, and clearance certificates.",
-    items: ["TIN Registration", "VAT Registration & Monthly Filing", "PAYE Setup & Filing", "PENCOM Registration & Clearance", "Tax Clearance Certificate (TCC)", "FIRS Notice Response & Resolution", "Back-Filing for Previous Years"],
+    tag: "COMPLIANCE",
+    title: "FIRS is chasing me, my returns are late, and I don't know what I owe",
+    sub: "Tax, Annual Returns & Regulatory Compliance",
+    pitch: "FIRS notices aren't warnings — they're enforcement. We handle TIN, returns, clearance certificates, and ongoing monitoring so you never fall behind again.",
+    forWhom: "Behind on filings, received a FIRS notice, missed annual returns, or need a TCC.",
+    services: [
+      "TIN Registration",
+      "VAT Registration & Monthly Filing",
+      "PAYE Setup & Filing",
+      "PENCOM Registration & Clearance",
+      "Tax Clearance Certificate (TCC)",
+      "FIRS Notice Response & Resolution",
+      "Back-Filing for Previous Years",
+      "Annual Returns Filing (current + missed years)",
+      "Company Status Check & Restoration",
+      "CAC Good Standing Certificate",
+      "Monthly Managed Compliance (from ₦15,000/month)",
+    ],
+    highlight: "Tax, returns, and regulatory — all in one place.",
   },
   {
     num: "04",
-    badge: "LEGAL",
-    title: "I have no legal documents. Verbal agreements are hurting me",
-    sub: "Corporate Documentation & Trademark",
-    forWhom: "Any business dealing with clients, partners, staff, or investors.",
-    pitch: "Verbal agreements give zero recourse. We draft every document your business needs.",
-    items: ["Service & Client Agreements", "NDAs & Confidentiality Deeds", "Employment Contracts", "Shareholder Agreements", "Partnership Deeds", "Trademark Registration", "Board Resolutions"],
+    tag: "LEGAL",
+    title: "I have no legal documents — verbal agreements are costing me money",
+    sub: "Contracts, Agreements, Trademark & IP Protection",
+    pitch: "Verbal agreements give zero recourse. We draft every document your business needs — from a single NDA to a full legal framework with trademark protection.",
+    forWhom: "Any business dealing with clients, partners, staff, or investors. Single documents or full sets.",
+    services: [
+      "Service & Client Agreements",
+      "NDAs & Confidentiality Deeds",
+      "Employment Contracts",
+      "Shareholder Agreements",
+      "Partnership Deeds",
+      "Board Resolutions",
+      "Trademark Registration (local & international)",
+      "IP Protection Advisory",
+      "Legal Templates & Custom Frameworks",
+    ],
+    highlight: "One document or a full legal library — we draft it all.",
   },
   {
     num: "05",
-    badge: "ANNUAL RETURNS",
-    title: "I forgot to file annual returns. CAC may strike me off",
-    sub: "Annual Returns & CAC Compliance Restoration",
-    forWhom: "Registered businesses that have missed annual return deadlines.",
-    pitch: "Miss two years and CAC strikes you off without warning. We file and restore.",
-    items: ["Annual Returns Filing (current year)", "Back-Filing for Missed Years", "Company Status Check", "Company Restoration (if struck off)", "CAC Good Standing Certificate", "Ongoing Annual Returns. Never miss again"],
-  },
-  {
-    num: "06",
-    badge: "RESTRUCTURING",
-    title: "I want to grow but my structure is wrong",
-    sub: "Business Restructuring & Corporate Changes",
-    forWhom: "Converting to Ltd, adding partners, or preparing for investment.",
-    pitch: "Wrong structure creates liability. We handle conversions, amendments, transfers, and mergers.",
-    items: ["Business Name → Limited Company Conversion", "New Director Registration", "Share Transfer & Allotment", "Shareholder Agreement Drafting", "Company Name Change", "Registered Address Change"],
-  },
-  {
-    num: "07",
-    badge: "SUBSCRIPTION",
-    title: "I want someone to handle my tax permanently",
-    sub: "Tax Pro Max. Monthly Managed Compliance",
-    forWhom: "Businesses that want tax handled completely. Every month.",
-    pitch: "A dedicated compliance officer handles your FIRS, PAYE, VAT, and CAC. Monthly. You never think about tax again.",
-    price: "From ₦15,000/month",
-    items: ["Monthly bookkeeping data collection", "Monthly PAYE & VAT filing on your behalf", "Quarterly compliance check + FIRS correspondence", "End-of-year Finance Audit Report", "Annual breakdown: what you owe, what we saved you, our fee", "FIRS Certificate of Good Standing (renewed annually)"],
+    tag: "LICENCES",
+    title: "I don't have the right licences — one inspection could shut me down",
+    sub: "All Industry Permits & Sector-Specific Licences",
+    pitch: "One inspection away from shutdown. We identify every licence your sector requires, file the applications, and track renewals so you stay compliant.",
+    forWhom: "Regulated sectors: food, oil & gas, healthcare, fintech, construction, export, tech.",
+    services: [
+      "NAFDAC Product Registration",
+      "DPR / NMDPRA Petroleum Licence",
+      "CBN / Fintech Approval",
+      "COREN / ARCON Professional Licence",
+      "NEPC Export Licence",
+      "SON Product Certification",
+      "NITDA Accreditation",
+      "State-Level Permits & Renewals",
+      "Licence Renewal Tracking & Alerts",
+    ],
+    highlight: "Every permit your sector demands — filed and tracked.",
   },
 ];
 
@@ -1659,9 +1684,16 @@ export default function BizDocPortal() {
             </p>
             <div className="flex flex-wrap gap-3">
               <button
-                onClick={() => blueprintRef.current?.scrollIntoView({ behavior: "smooth" })}
+                onClick={() => document.getElementById("pillars")?.scrollIntoView({ behavior: "smooth" })}
                 className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl text-[14px] font-semibold transition-opacity hover:opacity-90"
                 style={{ backgroundColor: Au, color: G }}
+              >
+                Our Services <ArrowRight size={16} className="inline ml-1" />
+              </button>
+              <button
+                onClick={() => blueprintRef.current?.scrollIntoView({ behavior: "smooth" })}
+                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl text-[14px] font-semibold transition-opacity hover:opacity-90 border"
+                style={{ borderColor: `${Au}50`, color: Au }}
               >
                 Business Blueprint <ArrowRight size={16} />
               </button>
@@ -1673,12 +1705,11 @@ export default function BizDocPortal() {
             <div className="rounded-3xl p-8" style={{ backgroundColor: "rgba(255,255,255,0.06)", border: `1px solid ${Au}25` }}>
               <p className="text-[11px] font-bold tracking-[0.2em] uppercase mb-4" style={{ color: Au }}>WHAT WE HANDLE</p>
               {[
-                "Foreign Company Registration (CAMA 2020)",
-                "CAC Registration & Annual Returns",
-                "FIRS / TIN / VAT / PAYE Filing",
-                "NAFDAC · DPR · Sector Licences",
-                "NDAs · Contracts · Agreements",
-                "Managed Compliance (Monthly)",
+                "Business Registration (Local & Foreign)",
+                "Full Business Setup — End to End",
+                "Tax, Returns & Regulatory Compliance",
+                "Legal Documents, Trademark & IP",
+                "Sector Licences & Permits",
               ].map(item => (
                 <div key={item} className="flex items-center gap-3 py-2.5 border-b" style={{ borderColor: `${Au}15` }}>
                   <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: Au }} />
@@ -1746,16 +1777,15 @@ export default function BizDocPortal() {
       </section>
 
       {/* ── PILLARS ───────────────────────────────────────────────────────── */}
-      <section className="py-24 md:py-32" style={{ backgroundColor: Milk }}>
+      <section id="pillars" className="py-24 md:py-32" style={{ backgroundColor: Milk }}>
         <div className="max-w-3xl mx-auto px-5">
-          <p className="text-[11px] font-medium tracking-[0.25em] uppercase mb-4" style={{ color: Au }}>WHAT YOU GET</p>
+          <p className="text-[11px] font-medium tracking-[0.25em] uppercase mb-4" style={{ color: Au }}>OUR SERVICES</p>
           <h2 className="text-[clamp(28px,4vw,42px)] font-light mb-4 leading-tight" style={{ color: G, letterSpacing: "-0.02em" }}>Every layer your business needs to stay protected.</h2>
           <p className="text-[16px] font-light opacity-55 mb-14 leading-relaxed" style={{ color: G }}>Registration, compliance, tax, legal, and beyond. Fully handled or partially exposed. Pick your gaps.</p>
 
           <div className="flex flex-col gap-3">
             {PILLARS.map((p) => {
               const isOpen = openPillar === p.num;
-              const isContinuity = p.num === "04";
               return (
                 <div
                   key={p.num}
@@ -1769,7 +1799,7 @@ export default function BizDocPortal() {
                     <span className="text-[11px] font-bold tracking-[0.2em] mt-0.5 shrink-0" style={{ color: Au }}>{p.num}</span>
                     <div className="flex-1 min-w-0">
                       <span className="inline-block text-[9px] font-bold tracking-[0.2em] uppercase px-2 py-0.5 rounded-full mb-1.5"
-                        style={{ backgroundColor: `${Au}18`, color: Au }}>{p.badge}</span>
+                        style={{ backgroundColor: `${Au}18`, color: Au }}>{p.tag}</span>
                       <div className="flex items-start justify-between gap-3">
                         <h3 className="text-[16px] font-bold leading-snug" style={{ color: G }}>{p.title}</h3>
                         <ChevronDown
@@ -1789,40 +1819,17 @@ export default function BizDocPortal() {
                     <div className="px-6 pb-7 pt-1 border-t" style={{ borderColor: `${Au}20` }}>
                       <p className="text-[14px] leading-relaxed mb-5 whitespace-pre-line" style={{ color: G, opacity: 0.75 }}>{p.pitch}</p>
 
-                      {isContinuity && p.video && (
-                        <a
-                          href={p.video}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-[13px] font-semibold mb-5 px-4 py-2 rounded-xl"
-                          style={{ backgroundColor: `${Au}15`, color: Au }}
-                        >
-                          <Play size={14} fill={Au} /> Watch: Why businesses get struck off
-                        </a>
-                      )}
-
                       <ul className="flex flex-col gap-1.5 mb-5">
-                        {p.items.map((item) => (
-                          <li key={item} className="flex items-center gap-2 text-[13px]" style={{ color: G }}>
+                        {p.services.map((svc) => (
+                          <li key={svc} className="flex items-center gap-2 text-[13px]" style={{ color: G }}>
                             <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: Au }} />
-                            {item}
+                            {svc}
                           </li>
                         ))}
                       </ul>
 
-                      {p.price && (
-                        <div className="rounded-xl p-4 mb-5" style={{ backgroundColor: Cr, border: `1px solid ${Au}30` }}>
-                          <p className="text-[12px] uppercase tracking-wider font-bold mb-1" style={{ color: Au }}>Pricing</p>
-                          <p className="text-[22px] font-bold mb-1" style={{ color: G }}>{p.price}</p>
-                          {p.split && (
-                            <div className="flex flex-col gap-0.5">
-                              {p.split.map((s) => (
-                                <p key={s} className="text-[12px] opacity-60" style={{ color: G }}>· {s}</p>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      <p className="text-[13px] font-semibold mb-5 px-4 py-2 rounded-xl inline-block"
+                        style={{ backgroundColor: `${Au}12`, color: G }}>{p.highlight}</p>
 
                       <button
                         onClick={() => blueprintRef.current?.scrollIntoView({ behavior: "smooth" })}
@@ -2129,6 +2136,9 @@ export default function BizDocPortal() {
       {/* ── FOOTER ───────────────────────────────────────────────────────── */}
       <footer className="py-8 px-5 border-t" style={{ borderColor: "rgba(28,28,30,0.08)", backgroundColor: W }}>
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-[12px] opacity-50" style={{ color: G }}>
+          <p className="text-[12px] font-light italic mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>
+            "Compliance is freedom. That is how we protect." — Muhammad Hamzury, Founder
+          </p>
           <p>© {new Date().getFullYear()} HAMZURY. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <Link href="/pricing"><span className="hover:opacity-100 transition-opacity cursor-pointer">Pricing</span></Link>
